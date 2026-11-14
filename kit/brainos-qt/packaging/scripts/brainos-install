@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "Run through pkexec."; exit 1; }
+[[ ${1:-} == "--json-stdin" ]] || { echo "Expected --json-stdin."; exit 2; }
+command -v jq >/dev/null
+command -v lsblk >/dev/null
+command -v parted >/dev/null
+command -v rsync >/dev/null
+
+config="$(mktemp)"
+chmod 600 "$config"
+trap 'rm -f "$config"; umount -R /mnt/brainos 2>/dev/null || true' EXIT
+cat > "$config"
+
+device="$(jq -r '.device' "$config")"
+username="$(jq -r '.userName' "$config")"
+hostname="$(jq -r '.hostName' "$config")"
+password="$(jq -r '.password' "$config")"
+timezone="$(jq -r '.timezone // "Asia/Kolkata"' "$config")"
+confirmation="$(jq -r '.confirmation' "$config")"
+firmware="$(jq -r '.firmware // "auto"' "$config")"
+
+[[ "$device" =~ ^/dev/[a-zA-Z0-9._/-]+$ ]] || { echo "Invalid device."; exit 3; }
+[[ -b "$device" ]] || { echo "Target is not a block device."; exit 3; }
+[[ "$username" =~ ^[a-z_][a-z0-9_-]{0,30}$ ]] || { echo "Invalid user name."; exit 3; }
+[[ "$hostname" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$ ]] || { echo "Invalid host name."; exit 3; }
+[[ "$confirmation" == "ERASE $device" ]] || { echo "Erase confirmation mismatch."; exit 3; }
+
+root_source="$(findmnt -no SOURCE / || true)"
+root_parent="$(lsblk -no PKNAME "$root_source" 2>/dev/null || true)"
+[[ -z "$root_parent" || "$device" != "/dev/$root_parent" ]] || {
+  echo "Refusing to erase the running system disk."
+  exit 4
+}
+
+if [[ "$firmware" == "auto" ]]; then
+  [[ -d /sys/firmware/efi ]] && firmware="efi" || firmware="bios"
+fi
+
+partition_path() {
+  if [[ "$device" =~ [0-9]$ ]]; then printf '%sp%s' "$device" "$1"; else printf '%s%s' "$device" "$1"; fi
+}
+
+progress() { printf 'PROGRESS %s %s\n' "$1" "$2"; }
+
+progress 4 "Unmounting target"
+while read -r mountpoint; do
+  [[ -z "$mountpoint" ]] || umount "$mountpoint" || true
+done < <(lsblk -lnpo MOUNTPOINT "$device" | tail -n +2)
+
+progress 10 "Creating GPT partition table"
+wipefs -a "$device"
+parted -s "$device" mklabel gpt
+if [[ "$firmware" == "efi" ]]; then
+  parted -s "$device" mkpart ESP fat32 1MiB 513MiB
+  parted -s "$device" set 1 esp on
+  parted -s "$device" mkpart BrainOS ext4 513MiB 100%
+  boot_partition="$(partition_path 1)"
+  root_partition="$(partition_path 2)"
+else
+  parted -s "$device" mkpart BIOS 1MiB 3MiB
+  parted -s "$device" set 1 bios_grub on
+  parted -s "$device" mkpart BrainOS ext4 3MiB 100%
+  root_partition="$(partition_path 2)"
+  boot_partition=""
+fi
+partprobe "$device"
+udevadm settle
+
+progress 22 "Formatting partitions"
+mkfs.ext4 -F -L BrainOS "$root_partition"
+if [[ -n "$boot_partition" ]]; then
+  mkfs.fat -F32 -n BRAINEFI "$boot_partition"
+fi
+
+progress 32 "Mounting target"
+mkdir -p /mnt/brainos
+mount "$root_partition" /mnt/brainos
+if [[ -n "$boot_partition" ]]; then
+  mkdir -p /mnt/brainos/boot/efi
+  mount "$boot_partition" /mnt/brainos/boot/efi
+fi
+
+progress 40 "Copying BrainOS"
+source_root="${BRAINOS_SOURCE_ROOT:-/}"
+rsync -aAXH --numeric-ids \
+  --exclude=/dev/* --exclude=/proc/* --exclude=/sys/* --exclude=/tmp/* \
+  --exclude=/run/* --exclude=/mnt/* --exclude=/media/* --exclude=/lost+found \
+  "$source_root"/ /mnt/brainos/
+
+progress 66 "Writing system configuration"
+root_uuid="$(blkid -s UUID -o value "$root_partition")"
+mkdir -p /mnt/brainos/etc
+printf 'UUID=%s / ext4 defaults,noatime 0 1\n' "$root_uuid" > /mnt/brainos/etc/fstab
+if [[ -n "$boot_partition" ]]; then
+  boot_uuid="$(blkid -s UUID -o value "$boot_partition")"
+  printf 'UUID=%s /boot/efi vfat umask=0077 0 1\n' "$boot_uuid" >> /mnt/brainos/etc/fstab
+fi
+printf '%s\n' "$hostname" > /mnt/brainos/etc/hostname
+ln -sf "/usr/share/zoneinfo/$timezone" /mnt/brainos/etc/localtime
+
+for path in dev proc sys run; do mount --rbind "/$path" "/mnt/brainos/$path"; mount --make-rslave "/mnt/brainos/$path"; done
+
+progress 74 "Creating user"
+chroot /mnt/brainos useradd -m -s /bin/bash -G sudo,video,audio,input,render "$username"
+printf '%s:%s\n' "$username" "$password" | chroot /mnt/brainos chpasswd
+if id brainos >/dev/null 2>&1; then
+  sed -i "s/^User=brainos$/User=$username/" /mnt/brainos/lib/systemd/system/brainos-shell.service
+fi
+
+progress 84 "Installing bootloader"
+if [[ "$firmware" == "efi" ]]; then
+  chroot /mnt/brainos grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=BrainOS --removable
+else
+  chroot /mnt/brainos grub-install --target=i386-pc "$device"
+fi
+chroot /mnt/brainos update-grub
+chroot /mnt/brainos systemctl enable brainos-shell.service
+
+progress 96 "Finalizing installation"
+sync
+umount -R /mnt/brainos
+progress 100 "BrainOS installation complete"

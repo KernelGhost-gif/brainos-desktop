@@ -1,0 +1,61 @@
+#!/bin/sh
+# Non-root BrainOS Wayland compositor session. Never disables Chromium sandbox.
+set -eu
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/opt/brainos/bin"
+export HOME="${HOME:-/home/brainos}"
+export USER="${USER:-brainos}"
+export LOGNAME="${LOGNAME:-$USER}"
+export BRAINOS_SHELL="${BRAINOS_SHELL:-/bin/sh}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-brainos}"
+export QT_WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
+export LD_LIBRARY_PATH="/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="${QT_PLUGIN_PATH:-/usr/lib/x86_64-linux-gnu/qt6/plugins}"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${QT_QPA_PLATFORM_PLUGIN_PATH:-$QT_PLUGIN_PATH/platforms}"
+export QML2_IMPORT_PATH="${QML2_IMPORT_PATH:-/usr/lib/x86_64-linux-gnu/qt6/qml}"
+export QML_IMPORT_PATH="${QML_IMPORT_PATH:-$QML2_IMPORT_PATH}"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-llvmpipe}"
+export QT_QPA_EGLFS_INTEGRATION="${QT_QPA_EGLFS_INTEGRATION:-eglfs_kms}"
+if [ -f /etc/fonts/fonts.conf ]; then export FONTCONFIG_FILE="${FONTCONFIG_FILE:-/etc/fonts/fonts.conf}"; export FONTCONFIG_PATH="${FONTCONFIG_PATH:-/etc/fonts}"; fi
+find_first_file() { for candidate in "$@"; do if [ -f "$candidate" ]; then printf '%s\n' "$candidate"; return 0; fi; done; return 1; }
+find_first_directory() { for candidate in "$@"; do if [ -d "$candidate" ]; then printf '%s\n' "$candidate"; return 0; fi; done; return 1; }
+webengine_process="$(find_first_file /usr/lib/qt6/libexec/QtWebEngineProcess /usr/lib/x86_64-linux-gnu/qt6/libexec/QtWebEngineProcess /usr/lib/qt6/bin/QtWebEngineProcess || true)"
+[ -n "$webengine_process" ] || { echo "[BRAINOS] QtWebEngineProcess missing; refusing incomplete desktop." >&2; exit 70; }
+export QTWEBENGINEPROCESS_PATH="$webengine_process"
+resources="$(find_first_directory /usr/share/qt6/resources /usr/lib/qt6/resources /usr/lib/x86_64-linux-gnu/qt6/resources /usr/share/qt6/webengine/resources || true)"
+locales="$(find_first_directory /usr/share/qt6/resources/qtwebengine_locales /usr/lib/qt6/resources/qtwebengine_locales /usr/lib/x86_64-linux-gnu/qt6/resources/qtwebengine_locales /usr/share/qt6/webengine/locales || true)"
+if [ -n "$resources" ]; then
+    export QTWEBENGINE_RESOURCES_PATH="$resources"
+    [ -f "$resources/icudtl.dat" ] || { echo "[BRAINOS] ICU data missing." >&2; exit 71; }
+    [ -f "$resources/qtwebengine_resources.pak" ] || { echo "[BRAINOS] QtWebEngine resources pack missing." >&2; exit 71; }
+else echo "[BRAINOS] QtWebEngine resource directory not found." >&2; exit 71; fi
+[ -n "$locales" ] || { echo "[BRAINOS] QtWebEngine locale directory not found." >&2; exit 72; }
+export QTWEBENGINE_LOCALES_PATH="$locales"
+mkdir -p "$XDG_RUNTIME_DIR"; chmod 0700 "$XDG_RUNTIME_DIR"
+[ "$(id -u)" -ne 0 ] || { echo "[BRAINOS] Refusing to run QtWebEngine as root; sandbox is not disabled." >&2; exit 77; }
+if [ "${BRAINOS_DBUS_SESSION_READY:-0}" != 1 ]; then
+    command -v dbus-run-session >/dev/null 2>&1 || { echo "[BRAINOS] dbus-run-session missing." >&2; exit 73; }
+    export BRAINOS_DBUS_SESSION_READY=1
+    exec dbus-run-session -- "$0" "$@"
+fi
+binary=/opt/brainos/bin/brainos-desktop
+log=/tmp/brainos-desktop.log
+socket="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+rm -f "$socket" "$log"
+"$binary" --socket-name "$WAYLAND_DISPLAY" "$@" >"$log" 2>&1 &
+brainos_pid=$!
+tries=0
+while [ "$tries" -lt 45 ]; do
+    if [ -S "$socket" ] && kill -0 "$brainos_pid" 2>/dev/null; then
+        echo "[BRAINOS] WAYLAND_SOCKET_READY=$socket"
+        cat "$log"
+        wait "$brainos_pid"
+        exit $?
+    fi
+    if ! kill -0 "$brainos_pid" 2>/dev/null; then echo "[BRAINOS] Desktop exited before creating Wayland socket." >&2; cat "$log" >&2; wait "$brainos_pid" || true; exit 74; fi
+    sleep 1; tries=$((tries + 1))
+done
+kill "$brainos_pid" 2>/dev/null || true; wait "$brainos_pid" 2>/dev/null || true
+echo "[BRAINOS] Timed out waiting for Wayland socket $socket." >&2; cat "$log" >&2; exit 75

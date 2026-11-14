@@ -1,0 +1,19 @@
+# Generated build and boot artifacts
+out/
+**/build/
+**/build-release/
+*.o
+*.a
+*.so
+*.so.*
+*.py[cod]
+__pycache__/
+
+# Runtime package closures and extracted target rootfs are generated locally
+brainos-runtime-dependencies-full.zip
+runtime-dependencies/
+linux_distro_original/
+
+# Python cache files
+**/__pycache__/
+*.py[cod]

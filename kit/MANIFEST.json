@@ -1,0 +1,26 @@
+{
+  "artifact": "BrainOS Qt + Toybox Linux integration source repository",
+  "repository_payload": "source-only",
+  "binary_policy": {
+    "prebuilt_executable_included": false,
+    "reason": "The integration executable is built from kit/brainos-qt source in CI or locally; the binary from the uploaded ZIP is not part of this Git source tree.",
+    "artwork": "PNG previews and wallpapers were replaced with source SVG mark and wallpaper assets."
+  },
+  "external_build_inputs": [
+    "complete Ubuntu amd64 glibc/Qt/WebEngine runtime .deb dependency closure",
+    "Linux kernel source tree and base kernel .config",
+    "Toybox/musl root filesystem"
+  ],
+  "included": [
+    "Qt 6 Wayland desktop source",
+    "SVG mark, wallpapers and application icon set",
+    "Toybox rootfs integration launcher and merger",
+    "runtime dependency downloader and closure verifier",
+    "deterministic newc/gzip initramfs packer",
+    "kernel USER_NS and virtio graphics config fragment",
+    "kernel/initramfs build and QEMU smoke-test scripts",
+    "GitHub Actions source and Qt build workflow",
+    "source-contract and reproducible archive tests"
+  ],
+  "important_status": "Source-level checks and reproducible archive tests are included. Qt compilation, full runtime closure, kernel build and real QEMU desktop boot must pass before release."
+}
