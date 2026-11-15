@@ -38,7 +38,7 @@ for deb in "${DEBS[@]}"; do
   [[ "$arch" == amd64 || "$arch" == all ]] || { echo "Unexpected package architecture $arch: $deb" >&2; exit 4; }
   PRESENT["$package"]="$deb"
 done
-required=(libc6 libc-bin libgcc-s1 libstdc++6 dbus dbus-daemon fontconfig libfontconfig1 libfreetype6 ca-certificates libnss3 libnspr4 libegl1 libgles2 libgl1 libgl1-mesa-dri libglx-mesa0 libdrm2 libgbm1 libwayland-client0 libwayland-server0 libwayland-egl1 libwayland-cursor0 libxkbcommon0 libinput10 libudev1 libqt6core6t64 libqt6dbus6 libqt6gui6 libqt6qml6 libqt6qmlmodels6 libqt6qmlworkerscript6 libqt6quick6 libqt6quickcontrols2-6 libqt6quicktemplates2-6 libqt6waylandcompositor6 libqt6webenginecore6 libqt6webenginequick6)
+required=(libc6 libc-bin libgcc-s1 libstdc++6 dbus dbus-daemon fontconfig libfontconfig1 libfreetype6 ca-certificates libnss3 libnspr4 libegl1 libgles2 libgl1 libgl1-mesa-dri libglx-mesa0 libdrm2 libgbm1 libwayland-client0 libwayland-server0 libwayland-egl1 libwayland-cursor0 libxkbcommon0 libinput10 libudev1 libqt6core6t64 libqt6dbus6 libqt6gui6 libqt6qml6 libqt6qmlmodels6 libqt6qmlworkerscript6 libqt6quick6 libqt6quickcontrols2-6 libqt6quicktemplates2-6 libqt6waylandcompositor6 libqt6webenginecore6 libqt6webenginequick6 util-linux)
 for package in "${required[@]}"; do [[ -n "${PRESENT[$package]:-}" ]] || { echo "Runtime bundle is incomplete: missing $package" >&2; exit 5; }; done
 icu_package=""
 for package in "${!PRESENT[@]}"; do
@@ -93,6 +93,12 @@ cat > "$ROOTFS/etc/brainos-release" <<'EOF'
 BrainOS Qt desktop integrated over the Toybox-based Linux userspace.
 Toybox remains the command provider for the original rootfs.
 EOF
+# Add the exact SZH shell/runtime as a separate /opt payload. The existing
+# /bin/sh, /bin/toybox and /lib/ld-musl paths remain untouched.
+SZH_BUNDLER="$KIT_DIR/brainos-qt/packaging/scripts/bundle-szh-terminal.sh"
+[[ -x "$SZH_BUNDLER" ]] || { echo "SZH terminal bundler is missing or not executable." >&2; exit 6; }
+SZH_ROOTFS="${SZH_ROOTFS:-}" "$SZH_BUNDLER" "$ROOTFS"
+
 # Add the exact SZH shell/runtime as a separate /opt payload. The existing
 # /bin/sh, /bin/toybox and /lib/ld-musl paths remain untouched.
 SZH_BUNDLER="$KIT_DIR/brainos-qt/packaging/scripts/bundle-szh-terminal.sh"

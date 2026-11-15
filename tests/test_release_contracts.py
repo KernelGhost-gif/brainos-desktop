@@ -124,6 +124,8 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('"$ROOTFS/bin/sh"', merger)
         self.assertIn('"$ROOTFS/bin/toybox"', merger)
         self.assertIn("util-linux", merger)
+        downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        self.assertIn("util-linux", downloader)
         self.assertIn('destination="$stage/opt/brainos/szh"', bundler)
 
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
