@@ -23,16 +23,37 @@ firmware="$(jq -r '.firmware // "auto"' "$config")"
 
 [[ "$device" =~ ^/dev/[a-zA-Z0-9._/-]+$ ]] || { echo "Invalid device."; exit 3; }
 [[ -b "$device" ]] || { echo "Target is not a block device."; exit 3; }
+[[ "$confirmation" == "ERASE $device" ]] || { echo "Erase confirmation mismatch."; exit 3; }
+device="$(readlink -f -- "$device")"
+[[ "$device" == /dev/* && -b "$device" ]] || { echo "Invalid canonical device path."; exit 3; }
+[[ "$(lsblk -dnro TYPE "$device" 2>/dev/null | head -n1)" == "disk" ]] || { echo "Target must be a whole physical disk."; exit 3; }
 [[ "$username" =~ ^[a-z_][a-z0-9_-]{0,30}$ ]] || { echo "Invalid user name."; exit 3; }
 [[ "$hostname" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$ ]] || { echo "Invalid host name."; exit 3; }
-[[ "$confirmation" == "ERASE $device" ]] || { echo "Erase confirmation mismatch."; exit 3; }
-
-root_source="$(findmnt -no SOURCE / || true)"
-root_parent="$(lsblk -no PKNAME "$root_source" 2>/dev/null || true)"
-[[ -z "$root_parent" || "$device" != "/dev/$root_parent" ]] || {
-  echo "Refusing to erase the running system disk."
-  exit 4
+[[ ${#password} -ge 8 && "$password" != *:* && "$password" != *$'\n'* && "$password" != *$'\r'* ]] || {
+  echo "Password must have at least 8 characters and contain no colon or line break." >&2
+  exit 3
 }
+[[ "$firmware" == "auto" || "$firmware" == "efi" || "$firmware" == "bios" ]] || { echo "Invalid firmware mode."; exit 3; }
+[[ "$timezone" =~ ^[A-Za-z0-9_+.-]+(/[A-Za-z0-9_+.-]+)*$ && "$timezone" != *".."* ]] || { echo "Invalid timezone."; exit 3; }
+timezone_path="$(realpath -e -- "/usr/share/zoneinfo/$timezone" 2>/dev/null || true)"
+[[ -n "$timezone_path" && "$timezone_path" == /usr/share/zoneinfo/* ]] || { echo "Unknown timezone."; exit 3; }
+
+system_disks=()
+for target in / /run/live/medium /cdrom; do
+  root_source="$(findmnt --evaluate -rn -o SOURCE --target "$target" 2>/dev/null | head -n1 || true)"
+  root_source="${root_source%%\[*}"
+  [[ "$root_source" == /dev/* ]] || continue
+  canonical_source="$(readlink -f -- "$root_source" 2>/dev/null || printf '%s' "$root_source")"
+  while read -r ancestor type; do
+    [[ "$type" == "disk" ]] && system_disks+=("$ancestor")
+  done < <(lsblk -s -nrpo PATH,TYPE "$canonical_source" 2>/dev/null || true)
+done
+for system_disk in "${system_disks[@]}"; do
+  [[ "$device" != "$system_disk" ]] || {
+    echo "Refusing to erase a disk backing the running system or live media." >&2
+    exit 4
+  }
+done
 
 if [[ "$firmware" == "auto" ]]; then
   [[ -d /sys/firmware/efi ]] && firmware="efi" || firmware="bios"
@@ -103,10 +124,18 @@ ln -sf "/usr/share/zoneinfo/$timezone" /mnt/brainos/etc/localtime
 for path in dev proc sys run; do mount --rbind "/$path" "/mnt/brainos/$path"; mount --make-rslave "/mnt/brainos/$path"; done
 
 progress 74 "Creating user"
-chroot /mnt/brainos useradd -m -s /bin/bash -G sudo,video,audio,input,render "$username"
+if chroot /mnt/brainos id -u "$username" >/dev/null 2>&1; then
+  chroot /mnt/brainos usermod -a -G sudo,video,audio,input,render "$username"
+else
+  chroot /mnt/brainos useradd -m -s /bin/bash -G sudo,video,audio,input,render "$username"
+fi
 printf '%s:%s\n' "$username" "$password" | chroot /mnt/brainos chpasswd
-if id brainos >/dev/null 2>&1; then
+if [[ -f /mnt/brainos/lib/systemd/system/brainos-shell.service ]]; then
   sed -i "s/^User=brainos$/User=$username/" /mnt/brainos/lib/systemd/system/brainos-shell.service
+fi
+if [[ -d /mnt/brainos/etc/sudoers.d ]]; then
+  printf '%s ALL=(ALL) NOPASSWD: /opt/brainos/libexec/brainos-install\n' "$username" > /mnt/brainos/etc/sudoers.d/brainos-installer
+  chmod 0440 /mnt/brainos/etc/sudoers.d/brainos-installer
 fi
 
 progress 84 "Installing bootloader"
