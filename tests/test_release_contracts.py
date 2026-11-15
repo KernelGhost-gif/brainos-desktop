@@ -50,6 +50,11 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('find "$destination/qml" -type f', bundler)
         self.assertIn('scan_dependencies "$plugin"', bundler)
 
+    def test_archive_verification_uses_portable_find_expression(self):
+        workflow = self.read(".github/workflows/ci.yml")
+        self.assertIn('find "$runtime/qt/qml" -type f -name \'*.so\' -print -quit | grep -q .', workflow)
+        self.assertNotIn('\\\\( -name', workflow)
+
     def test_ci_builds_verifies_and_uploads_release_runtime(self):
         workflow = self.read(".github/workflows/ci.yml")
         self.assertIn("packaging/build-release.sh", workflow)

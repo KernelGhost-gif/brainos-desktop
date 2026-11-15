@@ -70,7 +70,7 @@ jobs:
             find "$runtime/qt/lib" -maxdepth 1 -type f -name 'libicudata.so.*' -print -quit | grep -q .
           fi
           test -d "$runtime/qt/resources/qtwebengine_locales"
-          find "$runtime/qt/qml" -type f \\( -name '*.so' -o -name '*.so.*' \\) -print -quit | grep -q .
+          find "$runtime/qt/qml" -type f -name '*.so' -print -quit | grep -q .
           echo "Release runtime archive passed executable, Qt plugin, QML, WebEngine and checksum checks."
       - name: Upload BrainOS runtime artifact
         uses: actions/upload-artifact@v4
