@@ -50,6 +50,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("lb config", script.read_text(encoding="utf-8"))
         workflow = self.read(".github/workflows/ci.yml")
         self.assertIn("packaging/build-iso.sh", workflow)
+        self.assertNotIn(r"\\${", script.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
