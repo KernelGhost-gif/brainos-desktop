@@ -46,3 +46,36 @@ jobs:
         run: cmake -S kit/brainos-qt -B out/qt-build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build BrainOS Desktop
         run: cmake --build out/qt-build --parallel 2
+      - name: Package complete Qt/WebEngine runtime
+        env:
+          BUILD_DIR: ${{ github.workspace }}/out/qt-build
+          STAGE_DIR: ${{ github.workspace }}/out/brainos-root
+          ARTIFACT_DIR: ${{ github.workspace }}/out/artifacts
+          BRAINOS_VERSION: ci
+          SOURCE_DATE_EPOCH: "0"
+        run: ./kit/brainos-qt/packaging/build-release.sh
+      - name: Verify runtime archive contents and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="out/artifacts/brainos-runtime-ci-x86_64.tar.gz"
+          sha256sum --check "$archive.sha256"
+          mkdir -p out/archive-check
+          tar -xzf "$archive" -C out/archive-check
+          runtime="out/archive-check/opt/brainos"
+          test -x "$runtime/bin/brainos-desktop"
+          test -x "$runtime/qt/libexec/QtWebEngineProcess"
+          test -f "$runtime/qt/plugins/platforms/libqeglfs.so"
+          test -f "$runtime/qt/resources/icudtl.dat"
+          test -d "$runtime/qt/resources/qtwebengine_locales"
+          find "$runtime/qt/qml" -type f \\( -name '*.so' -o -name '*.so.*' \\) -print -quit | grep -q .
+          echo "Release runtime archive passed executable, Qt plugin, QML, WebEngine and checksum checks."
+      - name: Upload BrainOS runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: brainos-runtime-ci
+          path: |
+            out/artifacts/brainos-runtime-ci-x86_64.tar.gz
+            out/artifacts/brainos-runtime-ci-x86_64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14

@@ -63,6 +63,12 @@ for module in QtCore QtQml QtQml.Models QtQuick QtQuick.2 QtQuick.Controls \
   [[ -d "$qt_qml/$module" ]] && cp -a "$qt_qml/$module" "$destination/qml/"
 done
 
+# QML import plugins are loaded lazily by the engine, so their dependencies
+# are not necessarily visible in the main executable's ldd tree.
+while IFS= read -r plugin; do
+  scan_dependencies "$plugin"
+done < <(find "$destination/qml" -type f \( -name '*.so' -o -name '*.so.*' \) -print | LC_ALL=C sort)
+
 # WebEngine resources: Chromium ICU data, resource packs, and locale packs.
 for source_root in "$qt_data" "$qt_lib" "$qt_libexecs"; do
   [[ -d "$source_root" ]] || continue

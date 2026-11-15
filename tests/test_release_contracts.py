@@ -44,6 +44,19 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("file.commit()", function)
         self.assertIn("file.cancelWriting()", function)
 
+    def test_qml_plugin_dependencies_are_included_in_release_closure(self):
+        bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh")
+        self.assertIn("QML import plugins are loaded lazily", bundler)
+        self.assertIn('find "$destination/qml" -type f', bundler)
+        self.assertIn('scan_dependencies "$plugin"', bundler)
+
+    def test_ci_builds_verifies_and_uploads_release_runtime(self):
+        workflow = self.read(".github/workflows/ci.yml")
+        self.assertIn("packaging/build-release.sh", workflow)
+        self.assertIn("QtWebEngineProcess", workflow)
+        self.assertIn("sha256sum --check", workflow)
+        self.assertIn("actions/upload-artifact@v4", workflow)
+
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
         script = ROOT / "kit/brainos-qt/packaging/build-iso.sh"
         self.assertTrue(script.is_file())
