@@ -26,6 +26,7 @@ Item {
 
         Qt.callLater(function() {
             terminalView.cursorPosition = terminalView.length
+            outputScroll.contentY = Math.max(0, outputScroll.contentHeight - outputScroll.height)
         })
     }
 
@@ -204,24 +205,38 @@ Item {
             }
         }
 
-        TextArea {
-            id: terminalView
+        Flickable {
+            id: outputScroll
             width: parent.width
             height: parent.height - 88
-            readOnly: true
-            text: root.output
-            color: "#DCE5F5"
-            selectionColor: Theme.accent
-            selectedTextColor: "white"
-            font.family: Theme.monoFont
-            font.pixelSize: 12
-            wrapMode: TextEdit.WrapAnywhere
-            selectByMouse: true
-            leftPadding: 14
-            rightPadding: 14
-            topPadding: 12
-            bottomPadding: 12
-            background: Rectangle { color: "#080B11" }
+            clip: true
+            contentWidth: width
+            contentHeight: terminalView.height
+            boundsBehavior: Flickable.StopAtBounds
+
+            TextArea {
+                id: terminalView
+                width: outputScroll.width
+                height: Math.max(outputScroll.height, implicitHeight)
+                readOnly: true
+                text: root.output
+                color: "#DCE5F5"
+                selectionColor: Theme.accent
+                selectedTextColor: "white"
+                font.family: Theme.monoFont
+                font.pixelSize: 12
+                wrapMode: TextEdit.WrapAnywhere
+                selectByMouse: true
+                leftPadding: 14
+                rightPadding: 14
+                topPadding: 12
+                bottomPadding: 12
+                background: Rectangle { color: "#080B11" }
+            }
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
         }
 
         Rectangle {
