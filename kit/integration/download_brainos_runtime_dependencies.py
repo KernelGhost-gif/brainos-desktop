@@ -51,7 +51,7 @@ def main() -> int:
         "z=zipfile.ZipFile(out,'w',compression=zipfile.ZIP_STORED); "
         "lines=['BrainOS Qt runtime bundle','Target: Ubuntu amd64','']; "
         "[lines.append(hashlib.sha256(open(p,'rb').read()).hexdigest()+'  '+os.path.basename(p)) for p in debs]; "
-        "z.writestr('MANIFEST.sha256','\\n'.join(lines)+'\\n'); "
+        "z.writestr('MANIFEST.sha256',chr(10).join(lines)+chr(10)); "
         "[z.write(p,os.path.basename(p)) for p in debs]; z.close(); "
         "print('Created',out,'with',len(debs),'packages')"
     )
