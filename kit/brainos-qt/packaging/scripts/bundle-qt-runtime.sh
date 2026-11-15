@@ -81,7 +81,14 @@ for source_root in "$qt_data" "$qt_lib" "$qt_libexecs"; do
   fi
 done
 
-[[ -s "$destination/resources/icudtl.dat" ]] || { echo "icudtl.dat missing from Qt WebEngine runtime." >&2; exit 1; }
+if [[ ! -s "$destination/resources/icudtl.dat" ]]; then
+  system_icu="$(find "$destination/lib" -maxdepth 1 -type f -name 'libicudata.so.*' -print -quit)"
+  [[ -n "$system_icu" ]] || {
+    echo "Qt WebEngine runtime needs either icudtl.dat or a bundled libicudata.so runtime." >&2
+    exit 1
+  }
+  echo "Using the system ICU runtime: $(basename "$system_icu")"
+fi
 compgen -G "$destination/resources/qtwebengine_resources*.pak" >/dev/null || {
   echo "Qt WebEngine .pak resource files missing." >&2; exit 1;
 }

@@ -7,7 +7,7 @@ stage="${STAGE_DIR:-$root/out/brainos-root}"
 artifacts="${ARTIFACT_DIR:-$root/out/artifacts}"
 
 rm -rf "$stage"
-cmake -S "$root" -B "$build_dir" -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S "$root" -B "$build_dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/
 cmake --build "$build_dir" --parallel
 DESTDIR="$stage" cmake --install "$build_dir"
 "$root/packaging/scripts/bundle-qt-runtime.sh" "$stage"

@@ -66,7 +66,9 @@ jobs:
           test -x "$runtime/bin/brainos-desktop"
           test -x "$runtime/qt/libexec/QtWebEngineProcess"
           test -f "$runtime/qt/plugins/platforms/libqeglfs.so"
-          test -f "$runtime/qt/resources/icudtl.dat"
+          if [[ ! -s "$runtime/qt/resources/icudtl.dat" ]]; then
+            find "$runtime/qt/lib" -maxdepth 1 -type f -name 'libicudata.so.*' -print -quit | grep -q .
+          fi
           test -d "$runtime/qt/resources/qtwebengine_locales"
           find "$runtime/qt/qml" -type f \\( -name '*.so' -o -name '*.so.*' \\) -print -quit | grep -q .
           echo "Release runtime archive passed executable, Qt plugin, QML, WebEngine and checksum checks."

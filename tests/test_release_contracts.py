@@ -66,6 +66,19 @@ class BrainOSReleaseContracts(unittest.TestCase):
                 script = ROOT / relative
                 self.assertTrue(script.stat().st_mode & 0o111, f"{relative} must be executable")
 
+    def test_ubuntu_system_icu_layout_is_supported(self):
+        bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh")
+        session = self.read("kit/integration/brainos-session")
+        verifier = self.read("kit/integration/verify-runtime.sh")
+        self.assertIn("libicudata.so.*", bundler)
+        self.assertIn("/usr/share/qt6/translations/qtwebengine_locales", session)
+        self.assertIn("libicudata.so.*", session)
+        self.assertIn("libicudata.so.*", verifier)
+
+    def test_release_installs_to_the_runtime_prefix(self):
+        script = self.read("kit/brainos-qt/packaging/build-release.sh")
+        self.assertIn("-DCMAKE_INSTALL_PREFIX=/", script)
+
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
         script = ROOT / "kit/brainos-qt/packaging/build-iso.sh"
         self.assertTrue(script.is_file())

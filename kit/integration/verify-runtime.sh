@@ -43,7 +43,9 @@ for soname in libEGL.so.1 libGLESv2.so.2 libgbm.so.1 libdrm.so.2 libwayland-serv
   find "$ROOTFS/lib" "$ROOTFS/usr/lib" -name "$soname" -print -quit 2>/dev/null | grep -q . || fail "runtime library missing: $soname"
 done
 find "$ROOTFS/lib" "$ROOTFS/usr/lib" \( -type f -o -type l \) -name "libicuuc.so.*" -print -quit 2>/dev/null | grep -q . || fail "ICU shared library libicuuc missing"
-find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name icudtl.dat -print -quit 2>/dev/null | grep -q . || fail "ICU data file icudtl.dat missing"
+if ! find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name icudtl.dat -print -quit 2>/dev/null | grep -q .; then
+  find "$ROOTFS/lib" "$ROOTFS/usr/lib" -type f -name 'libicudata.so.*' -print -quit 2>/dev/null | grep -q . || fail "neither icudtl.dat nor system libicudata.so is present"
+fi
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name 'qtwebengine_resources*.pak' -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine resource .pak files missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type d -name qtwebengine_locales -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine locales missing"
 find "$ROOTFS/usr/lib" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so \) -print -quit 2>/dev/null | grep -q . || fail "Mesa software DRI driver missing"

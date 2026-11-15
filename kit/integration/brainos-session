@@ -25,11 +25,15 @@ webengine_process="$(find_first_file /usr/lib/qt6/libexec/QtWebEngineProcess /us
 [ -n "$webengine_process" ] || { echo "[BRAINOS] QtWebEngineProcess missing; refusing incomplete desktop." >&2; exit 70; }
 export QTWEBENGINEPROCESS_PATH="$webengine_process"
 resources="$(find_first_directory /usr/share/qt6/resources /usr/lib/qt6/resources /usr/lib/x86_64-linux-gnu/qt6/resources /usr/share/qt6/webengine/resources || true)"
-locales="$(find_first_directory /usr/share/qt6/resources/qtwebengine_locales /usr/lib/qt6/resources/qtwebengine_locales /usr/lib/x86_64-linux-gnu/qt6/resources/qtwebengine_locales /usr/share/qt6/webengine/locales || true)"
+locales="$(find_first_directory /usr/share/qt6/resources/qtwebengine_locales /usr/share/qt6/translations/qtwebengine_locales /usr/lib/qt6/resources/qtwebengine_locales /usr/lib/qt6/translations/qtwebengine_locales /usr/lib/x86_64-linux-gnu/qt6/resources/qtwebengine_locales /usr/lib/x86_64-linux-gnu/qt6/translations/qtwebengine_locales /usr/share/qt6/webengine/locales || true)"
 if [ -n "$resources" ]; then
     export QTWEBENGINE_RESOURCES_PATH="$resources"
-    [ -f "$resources/icudtl.dat" ] || { echo "[BRAINOS] ICU data missing." >&2; exit 71; }
     [ -f "$resources/qtwebengine_resources.pak" ] || { echo "[BRAINOS] QtWebEngine resources pack missing." >&2; exit 71; }
+    if [ ! -f "$resources/icudtl.dat" ]; then
+        system_icu="$(find_first_file /usr/lib/x86_64-linux-gnu/libicudata.so.* /lib/x86_64-linux-gnu/libicudata.so.* /usr/lib/libicudata.so.* || true)"
+        [ -n "$system_icu" ] || { echo "[BRAINOS] Neither bundled ICU data nor a system ICU data library is available." >&2; exit 71; }
+        echo "[BRAINOS] Using system ICU runtime data: $system_icu"
+    fi
 else echo "[BRAINOS] QtWebEngine resource directory not found." >&2; exit 71; fi
 [ -n "$locales" ] || { echo "[BRAINOS] QtWebEngine locale directory not found." >&2; exit 72; }
 export QTWEBENGINE_LOCALES_PATH="$locales"
