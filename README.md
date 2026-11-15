@@ -33,6 +33,18 @@ bash kit/integration/merge-into-toybox.sh \
 
 The merger fails closed when required runtime libraries, Qt modules or WebEngine assets are missing. It preserves the existing musl/Toybox command provider and installs BrainOS into a separate glibc runtime area. `brainos.mode=cli` selects the original Toybox shell; `brainos.mode=desktop` selects the desktop session, with CLI fallback on failure. Chromium sandboxing is not disabled.
 
+## Build a Debian live ISO
+
+On a Debian build host with Qt 6 development dependencies and `live-build` installed:
+
+```bash
+sudo ./kit/brainos-qt/packaging/build-iso.sh
+```
+
+This builds the desktop from source, bundles the Qt/WebEngine runtime, and
+writes an amd64 live ISO plus its SHA-256 file to `out/artifacts/`. It is a
+separate Debian live image and does not replace the Toybox/musl workflow.
+
 ## Build and test the boot image
 
 ```bash

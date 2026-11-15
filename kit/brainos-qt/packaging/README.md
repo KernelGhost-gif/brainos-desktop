@@ -52,14 +52,19 @@ initramfs integration uses the separate `.deb` dependency-closure workflow in
 
 ## Build a bootable live ISO
 
-A complete Debian live-build host is required:
+A complete Debian live-build host is required. The builder compiles BrainOS,
+bundles Qt/WebEngine assets, and creates the live image:
 
 ```bash
 sudo apt-get install live-build
 sudo ./packaging/build-iso.sh
 ```
 
-The live image is a full Debian-based system, not the minimal musl/Toybox image.
+The default target is Debian `stable` amd64. Set `DEBIAN_SUITE` to select
+another suite, `LIVE_BUILD_DIR` to retain the build workspace, and
+`ARTIFACT_DIR` to change the output directory. The ISO and SHA-256 file are
+written under `out/artifacts/` by default. This is a full Debian-based live
+system, not the minimal musl/Toybox image.
 
 ## Installer safety
 
