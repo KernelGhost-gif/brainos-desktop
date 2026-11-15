@@ -33,7 +33,6 @@ libwayland-egl1
 libwayland-cursor0
 libnss3
 libnspr4
-libicu78
 fontconfig
 fonts-dejavu-core
 ca-certificates

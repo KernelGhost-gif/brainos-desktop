@@ -42,6 +42,7 @@ done
 for soname in libEGL.so.1 libGLESv2.so.2 libgbm.so.1 libdrm.so.2 libwayland-server.so.0 libwayland-client.so.0 libxkbcommon.so.0 libinput.so.10 libudev.so.1 libfontconfig.so.1 libfreetype.so.6 libnss3.so libnspr4.so; do
   find "$ROOTFS/lib" "$ROOTFS/usr/lib" -name "$soname" -print -quit 2>/dev/null | grep -q . || fail "runtime library missing: $soname"
 done
+find "$ROOTFS/lib" "$ROOTFS/usr/lib" \( -type f -o -type l \) -name "libicuuc.so.*" -print -quit 2>/dev/null | grep -q . || fail "ICU shared library libicuuc missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name icudtl.dat -print -quit 2>/dev/null | grep -q . || fail "ICU data file icudtl.dat missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name 'qtwebengine_resources*.pak' -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine resource .pak files missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type d -name qtwebengine_locales -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine locales missing"
