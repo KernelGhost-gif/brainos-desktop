@@ -33,7 +33,7 @@ bash kit/integration/merge-into-toybox.sh \
   out/qt-build/brainos-desktop
 ```
 
-The base project must contain `distro/fs`, `src/linux/.config` and the existing Toybox shell, `su`, `id`, `/etc/inittab` and `/etc/init.d/rcS`. Back up the target first. The merger checks that the Toybox command binaries use `/lib/ld-musl-x86_64.so.1` before modifying the rootfs. It extracts the glibc packages separately, installs BrainOS, creates an unprivileged session account, adds a launcher to init and builds a deterministic initramfs. The glibc dependency bundle must include the Qt Wayland Compositor and WebEngine runtime plugins and resources expected by `verify-runtime.sh`.
+The base project must contain `distro/fs`, `src/linux/.config` and the existing Toybox shell, `su`, `id`, `/etc/inittab` and `/etc/init.d/rcS`. Back up the target first. The merger checks that the Toybox command binaries use `/lib/ld-musl-x86_64.so.1` before modifying the rootfs. It also bundles the pinned SZH shell, matching musl loader/readline/ncurses libraries and Toybox command wrappers under `/opt/brainos/szh`; set `SZH_ROOTFS` to a local `linux_distro_original/distro/fs` directory to avoid downloading the pinned binary payloads. It extracts the glibc packages separately, installs BrainOS, creates an unprivileged session account, adds a launcher to init and builds a deterministic initramfs. The glibc dependency bundle must include the Qt Wayland Compositor and WebEngine runtime plugins and resources expected by `verify-runtime.sh`.
 
 Boot modes: `brainos.mode=cli` starts the original Toybox shell; `brainos.mode=desktop` starts BrainOS (default). A missing runtime or failed compositor returns to Toybox CLI. Chromium sandboxing stays enabled; there is no `--no-sandbox` fallback.
 

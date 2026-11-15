@@ -10,6 +10,7 @@
 #include "common/InstallerService.h"
 #include "common/SystemService.h"
 #include "common/SystemState.h"
+#include "common/SzhTerminalService.h"
 #include "common/WindowModel.h"
 
 int main(int argc, char **argv)
@@ -52,9 +53,11 @@ int main(int argc, char **argv)
     SystemService system;
     WindowModel windows;
     SystemState systemState;
+    SzhTerminalService szhTerminal;
     QQmlApplicationEngine engine;
 
     engine.rootContext()->setContextProperty(QStringLiteral("systemState"), &systemState);
+    engine.rootContext()->setContextProperty(QStringLiteral("szhTerminal"), &szhTerminal);
     engine.rootContext()->setContextProperty(QStringLiteral("brain"), &brain);
     engine.rootContext()->setContextProperty(QStringLiteral("installer"), &installer);
     engine.rootContext()->setContextProperty(QStringLiteral("system"), &system);

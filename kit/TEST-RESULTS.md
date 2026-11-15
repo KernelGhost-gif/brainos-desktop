@@ -23,3 +23,13 @@ Updated: 2026-11-14
 - QEMU Toybox CLI boot and Qt desktop boot, Wayland socket readiness, WebEngine sandbox startup and live VNC framebuffer capture.
 
 No successful end-to-end Qt desktop boot is claimed by these source-level tests. Run `scripts/qemu-smoke-test.sh` against the completed kernel/initramfs/runtime inputs before calling the integration bootable.
+
+
+## SZH terminal integration
+
+- Terminal source defaults to SZH `/bin/sh`, not a simulated command prompt.
+- The packaged payload includes the matching musl loader, readline, ncurses and Toybox multicall binary from the pinned SZH commit.
+- Each downloaded shell/runtime payload and the upstream license are verified against their Git blob SHA before packaging.
+- A persistent util-linux `script` PTY carries input and output; Ctrl+C and Ctrl+D are forwarded from the UI.
+- CI runs a shell command inside SZH and exercises a PTY command/exit sequence from the extracted release archive.
+- SZH runs as the current BrainOS user on the host filesystem. It is not a chroot or security boundary, and the current text UI is not full-screen VT emulation.

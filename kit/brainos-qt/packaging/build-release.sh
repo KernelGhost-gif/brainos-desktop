@@ -11,6 +11,7 @@ cmake -S "$root" -B "$build_dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INS
 cmake --build "$build_dir" --parallel
 DESTDIR="$stage" cmake --install "$build_dir"
 "$root/packaging/scripts/bundle-qt-runtime.sh" "$stage"
+"$root/packaging/scripts/bundle-szh-terminal.sh" "$stage"
 
 mkdir -p "$artifacts"
 version="${BRAINOS_VERSION:-$(date +%Y.%m.%d)}"

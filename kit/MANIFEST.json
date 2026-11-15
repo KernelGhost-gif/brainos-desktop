@@ -9,7 +9,8 @@
   "external_build_inputs": [
     "complete Ubuntu amd64 glibc/Qt/WebEngine runtime .deb dependency closure",
     "Linux kernel source tree and base kernel .config",
-    "Toybox/musl root filesystem"
+    "Toybox/musl root filesystem",
+    "Pinned public SZH runtime sources at commit 1037b073d4ef62029548305b6b13fcd133e3a270, or local SZH_ROOTFS"
   ],
   "included": [
     "Qt 6 Wayland desktop source",
@@ -20,7 +21,15 @@
     "kernel USER_NS and virtio graphics config fragment",
     "kernel/initramfs build and QEMU smoke-test scripts",
     "GitHub Actions source and Qt build workflow",
-    "source-contract and reproducible archive tests"
+    "source-contract and reproducible archive tests",
+    "Pinned SZH musl shell, readline/ncurses runtime, and Toybox applet command wrappers"
   ],
-  "important_status": "Source-level checks and reproducible archive tests are included. Qt compilation, full runtime closure, kernel build and real QEMU desktop boot must pass before release."
+  "important_status": "Source-level checks and reproducible archive tests are included. Qt compilation, full runtime closure, kernel build and real QEMU desktop boot must pass before release.",
+  "terminal": {
+    "default_shell": "SZH /bin/sh",
+    "command_provider": "Toybox multicall applets",
+    "pty": "util-linux script",
+    "isolation": "Runs as the current BrainOS user against the host filesystem; not a chroot",
+    "ui_limit": "Line-oriented shell UI; not a full-screen VT emulator"
+  }
 }

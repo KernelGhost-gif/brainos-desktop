@@ -1,6 +1,6 @@
 # BrainOS Desktop
 
-BrainOS Desktop is a Qt 6 / QML Wayland desktop shell with application windows, a dock, desktop widgets, status and quick-settings panels, Files, Terminal, Settings, Calculator, Browser, editor and media views. This repository tracks the source implementation and Toybox integration tooling. The vector mark and wallpaper assets are source SVGs.
+BrainOS Desktop is a Qt 6 / QML Wayland desktop shell with application windows, a dock, desktop widgets, status and quick-settings panels, Files, an SZH/Toybox-backed Terminal, Settings, Calculator, Browser, editor and media views. This repository tracks the source implementation and Toybox integration tooling. The vector mark and wallpaper assets are source SVGs.
 
 ## Repository layout
 
@@ -8,6 +8,17 @@ BrainOS Desktop is a Qt 6 / QML Wayland desktop shell with application windows, 
 - `kit/integration/` — Toybox rootfs merger, isolated glibc/Qt runtime validation, boot launcher, runtime downloader, kernel config fragment and deterministic newc/gzip packer.
 - `scripts/` — kernel and initramfs build, source import, runtime checks, QEMU smoke test and publishing helper.
 - `tests/` — source-contract and deterministic initramfs regression tests.
+
+## SZH Terminal
+
+The Terminal app defaults to the real `/bin/sh` from the pinned
+`KernelGhost-gif/szh` build, with its matching musl loader, readline, ncurses,
+and Toybox applet commands. It runs as a persistent PTY session, supports
+shell state and history, Ctrl+C/Ctrl+D, and has a Host shell fallback.
+Install `util-linux` for PTY support. SZH commands run as the current BrainOS
+user against the BrainOS host filesystem; this is not a chroot or security
+sandbox. The text-based UI handles shell command sessions but does not claim
+full-screen terminal emulation for programs such as `vi` or `top`.
 
 ## Build the desktop
 

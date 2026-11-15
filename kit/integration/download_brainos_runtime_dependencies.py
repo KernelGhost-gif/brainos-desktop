@@ -27,7 +27,7 @@ PACKAGES = [
     "libegl1", "libgles2", "libgl1", "libgl1-mesa-dri", "libglx-mesa0", "libdrm2", "libgbm1",
     "libwayland-client0", "libwayland-server0", "libwayland-egl1", "libwayland-cursor0",
     "libxkbcommon0", "libinput10", "libudev1", "libnss3", "libnspr4", "ca-certificates",
-    "fontconfig", "libfontconfig1", "libfreetype6", "fonts-dejavu-core",
+    "fontconfig", "libfontconfig1", "libfreetype6", "fonts-dejavu-core", "util-linux",
 ]
 
 

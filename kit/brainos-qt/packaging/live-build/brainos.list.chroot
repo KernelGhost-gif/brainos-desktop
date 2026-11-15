@@ -37,3 +37,4 @@ fontconfig
 fonts-dejavu-core
 ca-certificates
 dbus
+util-linux

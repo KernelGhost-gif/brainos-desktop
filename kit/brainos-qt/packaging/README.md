@@ -14,6 +14,7 @@ sudo apt-get install --no-install-recommends \
   qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-wayland \
   qml6-module-qtwayland-compositor qt6-webengine-dev \
   qt6-tools-dev qt6-tools-dev-tools qt6-positioning-dev qt6-webchannel-dev \
+  binutils curl util-linux \
   libegl-dev libgl-dev libdrm-dev libgbm-dev libinput-dev \
   libwayland-dev libxkbcommon-dev libudev-dev libdbus-1-dev \
   libfontconfig1-dev libfreetype6-dev libnss3-dev libssl-dev

@@ -4,90 +4,184 @@ import BrainOS
 
 Item {
     id: root
+
     property var desktop
-    property string workingDirectory: system.homePath
     property var history: []
     property int historyIndex: 0
-    property string output: "BrainOS Terminal\nRun standard Linux commands. Type 'help' for shell shortcuts.\n\n"
+    property string output: "BrainOS Terminal\nSZH shell is the default command environment.\n"
 
-    function append(text) {
+    function append(rawText) {
+        let text = String(rawText)
+        // The terminal view is text-based: strip ANSI drawing/colour sequences
+        // while preserving command output and readline prompt text.
+        text = text.replace(/\u001b\][^\u0007]*(?:\u0007|\u001b\\)/g, "")
+        text = text.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+        text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+        if (text.length === 0)
+            return
+
         output += text
-        terminalView.text = output
-        terminalView.cursorPosition = terminalView.length
+        if (output.length > 400000)
+            output = output.slice(-320000)
+
+        Qt.callLater(function() {
+            terminalView.cursorPosition = terminalView.length
+        })
+    }
+
+    function clearScreen() {
+        output = ""
+        terminalView.cursorPosition = 0
     }
 
     function run() {
-        const raw = commandField.text.trim()
-        if (raw.length === 0)
+        const raw = commandField.text
+        if (raw.trim().length === 0)
             return
-        append(system.userName + "@" + system.hostName + ":" + workingDirectory + "$ " + raw + "\n")
+
         history = history.concat([raw])
+        if (history.length > 300)
+            history = history.slice(-300)
         historyIndex = history.length
         commandField.text = ""
 
-        const parts = raw.split(/\s+/)
-        const name = parts[0]
-        if (name === "clear") {
-            output = ""
-            terminalView.text = ""
-        } else if (name === "help") {
-            append("Built-ins: help, clear, cd, pwd, open, apps, wallpaper\n"
-                   + "All installed non-interactive Linux commands are available through /bin/sh:\n"
-                   + "ls, cat, grep, find, cp, mv, mkdir, rm, chmod, ps, df, du, uname, ping, curl, git, python and package tools.\n")
-        } else if (name === "cd") {
-            const target = parts.length > 1 ? raw.substring(3).trim() : system.homePath
-            const resolved = system.resolvePath(target, workingDirectory)
-            if (system.directoryExists(resolved))
-                workingDirectory = resolved
-            else
-                append("cd: no such directory: " + target + "\n")
-        } else if (name === "pwd") {
-            append(workingDirectory + "\n")
-        } else if (name === "open") {
-            const target = parts.length > 1 ? raw.substring(5).trim() : workingDirectory
-            if (!system.openPath(system.resolvePath(target, workingDirectory)))
-                append("open: could not open " + target + "\n")
-        } else if (name === "apps") {
+        const trimmed = raw.trim()
+        if (trimmed === "clear") {
+            clearScreen()
+            return
+        }
+
+        if (trimmed === "apps") {
             if (desktop)
                 desktop.applicationsOpen = true
-        } else if (name === "wallpaper") {
+            return
+        }
+
+        if (trimmed === "help") {
+            append("\nBrainOS commands: apps, wallpaper 1|2|3, open PATH, clear\n")
+            append("SZH commands are provided by the bundled Toybox applet set. Try: ls, find, ps, uname, vi, tar, ping.\n")
+            append("The SZH shell runs as your current BrainOS user on the host filesystem.\n")
+            return
+        }
+
+        if (trimmed === "open" || trimmed.startsWith("open ")) {
+            const target = trimmed.length > 5 ? trimmed.substring(5).trim() : system.homePath
+            if (!system.openPath(system.resolvePath(target)))
+                append("open: could not open " + target + "\n")
+            return
+        }
+
+        if (trimmed === "wallpaper" || trimmed.startsWith("wallpaper ")) {
+            const parts = trimmed.split(/\s+/)
             if (parts.length === 2 && Number(parts[1]) >= 1 && Number(parts[1]) <= 3)
                 brain.wallpaperIndex = Number(parts[1]) - 1
             else
                 append("usage: wallpaper 1|2|3\n")
-        } else {
-            system.runCommand(raw, workingDirectory)
+            return
         }
+
+        if (!szhTerminal.sendInput(raw + "\n"))
+            append("[terminal] No active shell. Use Restart to start a session.\n")
+    }
+
+    function switchShell(name) {
+        const started = name === "SZH" ? szhTerminal.startSzh() : szhTerminal.startHost()
+        if (started) {
+            output = "BrainOS Terminal\n" + name + " shell session started.\n"
+            commandField.forceActiveFocus()
+        } else if (name === "SZH") {
+            append("[SZH runtime unavailable; starting the BrainOS host shell instead.]\n")
+            if (szhTerminal.startHost())
+                append("Host shell session started.\n")
+        }
+    }
+
+    function restartSession() {
+        switchShell(szhTerminal.shellName === "Host" ? "Host" : "SZH")
     }
 
     Connections {
-        target: system
-        function onCommandOutput(requestId, text) { root.append(text) }
-        function onCommandFinished(requestId, exitCode) {
-            if (exitCode !== 0)
-                root.append("[exit " + exitCode + "]\n")
-            root.append("\n")
-            commandField.forceActiveFocus()
+        target: szhTerminal
+
+        function onTerminalOutput(text) {
+            root.append(text)
+        }
+
+        function onSessionFinished(exitCode) {
+            root.append("\n[session exited with status " + exitCode + "]\n")
+        }
+
+        function onRunningChanged() {
+            if (szhTerminal.running)
+                commandField.forceActiveFocus()
         }
     }
 
-    Rectangle { anchors.fill: parent; color: "#080B11" }
+    Component.onCompleted: {
+        if (!szhTerminal.startSzh()) {
+            append("[SZH runtime unavailable; using the BrainOS host shell.]\n")
+            szhTerminal.startHost()
+        }
+    }
+
+    Component.onDestruction: szhTerminal.stop()
+
+    Rectangle {
+        anchors.fill: parent
+        color: "#080B11"
+    }
 
     Column {
         anchors.fill: parent
+        spacing: 0
 
         Rectangle {
             width: parent.width
-            height: 34
+            height: 42
             color: "#111621"
+            border.color: Theme.border
+
             Row {
                 anchors.fill: parent
                 anchors.leftMargin: 12
-                spacing: 8
+                anchors.rightMargin: 10
+                spacing: 7
+
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 8; height: 8; radius: 4; color: Theme.green
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: szhTerminal.running ? Theme.green : Theme.textDim
                 }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: szhTerminal.running ? szhTerminal.shellName + " shell" : "Shell stopped"
+                    color: Theme.text
+                    font.family: Theme.monoFont
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                }
+
+                Item { width: 6; height: 1 }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "SZH"
+                    highlighted: szhTerminal.shellName === "SZH"
+                    onClicked: root.switchShell("SZH")
+                }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Host"
+                    highlighted: szhTerminal.shellName === "Host"
+                    onClicked: root.switchShell("Host")
+                }
+
+                Item { width: 6; height: 1 }
+
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: system.userName + "@" + system.hostName
@@ -95,13 +189,25 @@ Item {
                     font.family: Theme.monoFont
                     font.pixelSize: 10
                 }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Clear"
+                    onClicked: root.clearScreen()
+                }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Restart"
+                    onClicked: root.restartSession()
+                }
             }
         }
 
         TextArea {
             id: terminalView
             width: parent.width
-            height: parent.height - 78
+            height: parent.height - 88
             readOnly: true
             text: root.output
             color: "#DCE5F5"
@@ -120,7 +226,7 @@ Item {
 
         Rectangle {
             width: parent.width
-            height: 44
+            height: 46
             color: "#10151F"
             border.color: Theme.border
 
@@ -129,6 +235,7 @@ Item {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 10
                 spacing: 8
+
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "❯"
@@ -136,6 +243,7 @@ Item {
                     font.pixelSize: 15
                     font.weight: Font.Bold
                 }
+
                 TextField {
                     id: commandField
                     anchors.verticalCenter: parent.verticalCenter
@@ -145,19 +253,37 @@ Item {
                     font.family: Theme.monoFont
                     font.pixelSize: 12
                     focus: true
-                    placeholderText: "Enter a command"
+                    placeholderText: szhTerminal.shellName === "SZH"
+                                     ? "Enter an SZH / Toybox command"
+                                     : "Enter a host shell command"
                     placeholderTextColor: Theme.textDim
                     background: Rectangle { color: "transparent" }
                     onAccepted: root.run()
+
+                    Keys.onPressed: function(event) {
+                        if (event.key === Qt.Key_C && (event.modifiers & Qt.ControlModifier)) {
+                            szhTerminal.sendInterrupt()
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_D && (event.modifiers & Qt.ControlModifier)) {
+                            szhTerminal.sendEof()
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_L && (event.modifiers & Qt.ControlModifier)) {
+                            root.clearScreen()
+                            event.accepted = true
+                        }
+                    }
+
                     Keys.onUpPressed: {
                         if (root.history.length > 0) {
                             root.historyIndex = Math.max(0, root.historyIndex - 1)
                             text = root.history[root.historyIndex]
                         }
                     }
+
                     Keys.onDownPressed: {
                         root.historyIndex = Math.min(root.history.length, root.historyIndex + 1)
-                        text = root.historyIndex < root.history.length ? root.history[root.historyIndex] : ""
+                        text = root.historyIndex < root.history.length
+                               ? root.history[root.historyIndex] : ""
                     }
                 }
             }

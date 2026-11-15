@@ -66,6 +66,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
         for relative in (
             "kit/brainos-qt/packaging/build-release.sh",
             "kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh",
+            "kit/brainos-qt/packaging/scripts/bundle-szh-terminal.sh",
         ):
             with self.subTest(script=relative):
                 script = ROOT / relative
@@ -83,6 +84,47 @@ class BrainOSReleaseContracts(unittest.TestCase):
     def test_release_installs_to_the_runtime_prefix(self):
         script = self.read("kit/brainos-qt/packaging/build-release.sh")
         self.assertIn("-DCMAKE_INSTALL_PREFIX=/", script)
+
+    def test_szh_runtime_is_pinned_verified_and_uses_musl(self):
+        bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-szh-terminal.sh")
+        self.assertIn("1037b073d4ef62029548305b6b13fcd133e3a270", bundler)
+        self.assertIn("verify_git_blob", bundler)
+        self.assertIn("libreadline.so.8", bundler)
+        self.assertIn("libncursesw.so.6", bundler)
+        self.assertIn("ld-musl-x86_64.so.1", bundler)
+        self.assertIn("toybox-applet", bundler)
+        self.assertIn("szh-shell", bundler)
+
+    def test_terminal_uses_persistent_pty_and_szh_is_default(self):
+        service = self.read("kit/brainos-qt/src/common/SzhTerminalService.cpp")
+        header = self.read("kit/brainos-qt/src/common/SzhTerminalService.h")
+        qml = self.read("kit/brainos-qt/qml/pages/TerminalPage.qml")
+        self.assertIn('QStandardPaths::findExecutable(QStringLiteral("script"))', service)
+        self.assertIn('QStringLiteral("-c")', service)
+        self.assertIn("sendInterrupt", header)
+        self.assertIn("startSzh()", qml)
+        self.assertIn("szhTerminal.sendInput(raw +", qml)
+        self.assertIn("szhTerminal.startHost()", qml)
+        self.assertIn("Component.onDestruction: szhTerminal.stop()", qml)
+
+    def test_szh_service_is_registered_with_qml_and_compiled(self):
+        main = self.read("kit/brainos-qt/src/main.cpp")
+        cmake = self.read("kit/brainos-qt/CMakeLists.txt")
+        workflow = self.read(".github/workflows/ci.yml")
+        self.assertIn("SzhTerminalService szhTerminal", main)
+        self.assertIn("&szhTerminal", main)
+        self.assertIn("SzhTerminalService.cpp", cmake)
+        self.assertIn("SZH_PTY_OK", workflow)
+
+    def test_toybox_merge_keeps_base_shell_and_adds_szh_separately(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-szh-terminal.sh")
+        self.assertIn('SZH_BUNDLER="$KIT_DIR/brainos-qt/packaging/scripts/bundle-szh-terminal.sh"', merger)
+        self.assertIn('SZH_ROOTFS="${SZH_ROOTFS:-}"', merger)
+        self.assertIn('"$ROOTFS/bin/sh"', merger)
+        self.assertIn('"$ROOTFS/bin/toybox"', merger)
+        self.assertIn("util-linux", merger)
+        self.assertIn('destination="$stage/opt/brainos/szh"', bundler)
 
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
         script = ROOT / "kit/brainos-qt/packaging/build-iso.sh"
