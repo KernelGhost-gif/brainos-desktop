@@ -57,9 +57,14 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("sha256sum --check", workflow)
         self.assertIn("actions/upload-artifact@v4", workflow)
 
-    def test_release_builder_is_executable(self):
-        script = ROOT / "kit/brainos-qt/packaging/build-release.sh"
-        self.assertTrue(script.stat().st_mode & 0o111, "build-release.sh must be executable")
+    def test_release_packaging_scripts_are_executable(self):
+        for relative in (
+            "kit/brainos-qt/packaging/build-release.sh",
+            "kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh",
+        ):
+            with self.subTest(script=relative):
+                script = ROOT / relative
+                self.assertTrue(script.stat().st_mode & 0o111, f"{relative} must be executable")
 
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
         script = ROOT / "kit/brainos-qt/packaging/build-iso.sh"
