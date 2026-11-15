@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="/opt/brainos/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-brainos}"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
+export QT_PLUGIN_PATH="/opt/brainos/qt/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="/opt/brainos/qt/plugins/platforms"
+export QML2_IMPORT_PATH="/opt/brainos/qt/qml"
+export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
+export LD_LIBRARY_PATH="/opt/brainos/qt/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QTWEBENGINEPROCESS_PATH="/opt/brainos/qt/libexec/QtWebEngineProcess"
+export QTWEBENGINE_RESOURCES_PATH="/opt/brainos/qt/resources"
+export QTWEBENGINE_LOCALES_PATH="/opt/brainos/qt/resources/qtwebengine_locales"
+export FONTCONFIG_FILE="${FONTCONFIG_FILE:-/etc/fonts/fonts.conf}"
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-llvmpipe}"
+export QT_QPA_EGLFS_INTEGRATION="${QT_QPA_EGLFS_INTEGRATION:-eglfs_kms}"
+
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+[[ $(id -u) -ne 0 ]] || { echo "Refusing to run BrainOS/QtWebEngine as root." >&2; exit 77; }
+
+if [[ "${BRAINOS_DBUS_READY:-0}" != 1 ]]; then
+  command -v dbus-run-session >/dev/null || { echo "dbus-run-session is required." >&2; exit 73; }
+  export BRAINOS_DBUS_READY=1
+  exec dbus-run-session -- "$0" "$@"
+fi
+
+exec /opt/brainos/bin/brainos-desktop --socket-name "$WAYLAND_DISPLAY" "$@"

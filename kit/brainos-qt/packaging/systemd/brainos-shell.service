@@ -1,0 +1,19 @@
+[Unit]
+Description=BrainOS Wayland desktop shell
+After=systemd-user-sessions.service dbus.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=brainos
+PAMName=login
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+Environment=QT_QPA_PLATFORM=eglfs
+ExecStart=/opt/brainos/bin/brainos-session
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

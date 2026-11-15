@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+if ! id brainos >/dev/null 2>&1; then
+  useradd -m -s /bin/bash -G sudo,video,audio,input,render brainos
+fi
+passwd -l brainos
+printf 'brainos ALL=(ALL) NOPASSWD: /opt/brainos/libexec/brainos-install\n' \
+  > /etc/sudoers.d/brainos-installer
+chmod 440 /etc/sudoers.d/brainos-installer
+systemctl enable brainos-shell.service

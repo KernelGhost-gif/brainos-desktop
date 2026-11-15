@@ -1,0 +1,48 @@
+name: BrainOS Desktop CI
+
+on:
+  push:
+    branches: ["main", "feat/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-initramfs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install validation tools
+        run: sudo apt-get update && sudo apt-get install -y binutils gzip
+      - name: Shell and Python syntax
+        run: |
+          bash -n kit/integration/brainos-launch kit/integration/brainos-session
+          bash -n kit/integration/merge-into-toybox.sh kit/integration/verify-runtime.sh
+          bash -n kit/brainos-qt/packaging/build-iso.sh kit/brainos-qt/packaging/build-release.sh
+          bash -n kit/brainos-qt/packaging/scripts/brainos-install kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh
+          bash -n scripts/*.sh
+          python3 -m py_compile kit/integration/*.py tests/*.py
+      - name: Source contract and reproducibility tests
+        run: python3 -m unittest discover -s tests -v
+
+  qt-source-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt 6 development and runtime modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-wayland \
+            qml6-module-qtwayland-compositor qt6-webengine-dev \
+            qt6-tools-dev qt6-tools-dev-tools qt6-positioning-dev qt6-webchannel-dev \
+            libegl-dev libgl-dev libdrm-dev libgbm-dev libinput-dev \
+            libwayland-dev libxkbcommon-dev libudev-dev libdbus-1-dev \
+            libfontconfig1-dev libfreetype6-dev libnss3-dev libssl-dev
+      - name: Configure Qt project
+        run: cmake -S kit/brainos-qt -B out/qt-build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build BrainOS Desktop
+        run: cmake --build out/qt-build --parallel 2

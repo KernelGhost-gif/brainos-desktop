@@ -1,0 +1,62 @@
+#!/bin/sh
+# Init respawn entry: select BrainOS desktop or the original Toybox CLI.
+set -u
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/opt/brainos/bin"
+mode=desktop
+cmdline="$(cat /proc/cmdline 2>/dev/null || true)"
+for argument in $cmdline; do
+    case "$argument" in
+        brainos.mode=desktop) mode=desktop ;;
+        brainos.mode=cli) mode=cli ;;
+        brainos.mode=*) mode=invalid ;;
+    esac
+done
+case "$mode" in
+    cli)
+        echo "[BRAINOS] BRAINOS_MODE=cli"
+        /bin/id || exit 81
+        /bin/toybox sh -c 'echo TOYBOX_SH_OK' || exit 82
+        /bin/su -c '/bin/id && echo TOYBOX_SU_OK' root || exit 83
+        echo "[BRAINOS] TOYBOX_CLI_READY"
+        exec /bin/sh
+        ;;
+    desktop) echo "[BRAINOS] BRAINOS_MODE=desktop" ;;
+    *)
+        echo "[BRAINOS] Invalid brainos.mode; selecting safe Toybox CLI." >&2
+        /bin/id || exit 81
+        /bin/toybox sh -c 'echo TOYBOX_SH_OK' || exit 82
+        /bin/su -c '/bin/id && echo TOYBOX_SU_OK' root || exit 83
+        echo "[BRAINOS] TOYBOX_CLI_READY"
+        exec /bin/sh
+        ;;
+esac
+if [ ! -x /opt/brainos/bin/brainos-session ] || [ ! -x /opt/brainos/bin/brainos-desktop ]; then
+    echo "[BRAINOS] Desktop runtime missing; falling back to Toybox CLI." >&2
+    exec /bin/sh
+fi
+if ! grep -q '^brainos:' /etc/passwd 2>/dev/null; then
+    echo "[BRAINOS] Unprivileged brainos account missing; falling back to Toybox CLI." >&2
+    exec /bin/sh
+fi
+mkdir -p /run /run/user/1000 /dev/pts /dev/shm
+if ! grep -q ' /run tmpfs ' /proc/mounts 2>/dev/null; then mount -t tmpfs -o mode=755,nosuid,nodev tmpfs /run 2>/dev/null || true; fi
+if ! grep -q ' /dev/pts devpts ' /proc/mounts 2>/dev/null; then mount -t devpts -o mode=0620,gid=5 devpts /dev/pts 2>/dev/null || true; fi
+if ! grep -q ' /dev/shm tmpfs ' /proc/mounts 2>/dev/null; then mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /dev/shm 2>/dev/null || true; fi
+mkdir -p /run/user/1000
+chown 1000:1000 /run/user/1000 2>/dev/null || true
+chmod 0700 /run/user/1000 2>/dev/null || true
+# Chromium sandboxing must remain enabled.
+if [ -w /proc/sys/user/max_user_namespaces ]; then echo 65536 > /proc/sys/user/max_user_namespaces 2>/dev/null || true; fi
+if [ -w /proc/sys/kernel/unprivileged_userns_clone ]; then echo 1 > /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || true; fi
+for node in /dev/dri/card*; do [ -e "$node" ] || continue; chown 0:27 "$node" 2>/dev/null || true; chmod 0660 "$node" 2>/dev/null || true; done
+for node in /dev/dri/renderD*; do [ -e "$node" ] || continue; chown 0:105 "$node" 2>/dev/null || true; chmod 0660 "$node" 2>/dev/null || true; done
+for node in /dev/input/event*; do [ -e "$node" ] || continue; chown 0:104 "$node" 2>/dev/null || true; chmod 0660 "$node" 2>/dev/null || true; done
+if command -v su >/dev/null 2>&1; then
+    su -l -s /bin/sh -c 'exec /opt/brainos/bin/brainos-session' brainos
+    result=$?
+    echo "[BRAINOS] Desktop session exited with status $result; falling back to Toybox CLI." >&2
+else
+    echo "[BRAINOS] Toybox su applet missing; refusing to run WebEngine as root." >&2
+fi
+echo "[BRAINOS] TOYBOX_CLI_FALLBACK"
+exec /bin/sh

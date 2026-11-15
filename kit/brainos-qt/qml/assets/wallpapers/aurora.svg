@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+ <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#070D25"/><stop offset=".55" stop-color="#142447"/><stop offset="1" stop-color="#090F20"/></linearGradient><radialGradient id="a"><stop stop-color="#8A5CF6" stop-opacity=".85"/><stop offset="1" stop-color="#8A5CF6" stop-opacity="0"/></radialGradient><radialGradient id="b"><stop stop-color="#45D2D2" stop-opacity=".7"/><stop offset="1" stop-color="#45D2D2" stop-opacity="0"/></radialGradient></defs>
+ <rect width="1920" height="1080" fill="url(#bg)"/><ellipse cx="430" cy="320" rx="730" ry="430" fill="url(#a)"/><ellipse cx="1450" cy="760" rx="680" ry="440" fill="url(#b)"/><path d="M0 760Q450 520 910 780T1920 650V1080H0Z" fill="#0B1327" opacity=".6"/>
+</svg>
