@@ -60,7 +60,8 @@ Item {
 
         if (trimmed === "help") {
             append("\nBrainOS commands: apps, wallpaper 1|2|3, open PATH, clear\n")
-            append("SZH commands are provided by the bundled Toybox applet set. Try: ls, find, ps, uname, vi, tar, ping.\n")
+            append("SZH commands are provided by the bundled Toybox applet set. Try: ls, cat, grep, find, ps, uname, tar, ping, df, du.\n")
+            append("This view supports line-oriented commands; full-screen apps such as vi and top are not supported yet.\n")
             append("The SZH shell runs as your current BrainOS user on the host filesystem.\n")
             return
         }
