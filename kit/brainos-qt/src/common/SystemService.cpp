@@ -7,6 +7,7 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QStorageInfo>
+#include <QSaveFile>
 #include <QSysInfo>
 #include <QUrl>
 
@@ -68,10 +69,22 @@ QString SystemService::readTextFile(const QString &path) const
 }
 bool SystemService::writeTextFile(const QString &path, const QString &content) const
 {
-    const QString resolved = resolvePath(path); QDir().mkpath(QFileInfo(resolved).absolutePath()); QFile file(resolved);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return false;
-    const QByteArray data = content.toUtf8(); if (data.size() > 2 * 1024 * 1024) return false;
-    return file.write(data) == data.size();
+    const QByteArray data = content.toUtf8();
+    if (data.size() > 2 * 1024 * 1024)
+        return false;
+
+    const QString resolved = resolvePath(path);
+    if (!QDir().mkpath(QFileInfo(resolved).absolutePath()))
+        return false;
+
+    QSaveFile file(resolved);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    if (file.write(data) != data.size()) {
+        file.cancelWriting();
+        return false;
+    }
+    return file.commit();
 }
 void SystemService::runCommand(const QString &command, const QString &workingDirectory)
 {

@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QSet>
 
 InstallerService::InstallerService(QObject *parent) : QObject(parent)
 {
@@ -33,12 +34,50 @@ void InstallerService::refreshHardware()
     m_efiDetected = QFileInfo::exists(QStringLiteral("/sys/firmware/efi")); emit hardwareChanged();
     QProcess lsblk; lsblk.start(QStringLiteral("lsblk"), {QStringLiteral("-J"), QStringLiteral("-b"), QStringLiteral("-o"), QStringLiteral("NAME,PATH,SIZE,MODEL,TYPE,MOUNTPOINTS,FSTYPE,PTTYPE")});
     if (!lsblk.waitForFinished(4000)) { m_disks.clear(); emit disksChanged(); return; }
-    QString rootParent;
-    QProcess findRoot; findRoot.start(QStringLiteral("findmnt"), {QStringLiteral("-no"), QStringLiteral("SOURCE"), QStringLiteral("/")});
-    if (findRoot.waitForFinished(1500)) {
-        const QString rootSource = QString::fromLocal8Bit(findRoot.readAllStandardOutput()).trimmed();
-        QProcess parentDisk; parentDisk.start(QStringLiteral("lsblk"), {QStringLiteral("-no"), QStringLiteral("PKNAME"), rootSource});
-        if (parentDisk.waitForFinished(1500)) rootParent = QStringLiteral("/dev/") + QString::fromLocal8Bit(parentDisk.readAllStandardOutput()).trimmed();
+    QSet<QString> systemDisks;
+    const QStringList protectedMounts = {
+        QStringLiteral("/"),
+        QStringLiteral("/run/live/medium"),
+        QStringLiteral("/cdrom")
+    };
+    for (const QString &mountPoint : protectedMounts) {
+        QProcess sourceFinder;
+        sourceFinder.start(QStringLiteral("findmnt"), {
+            QStringLiteral("--evaluate"), QStringLiteral("-rn"),
+            QStringLiteral("-o"), QStringLiteral("SOURCE"),
+            QStringLiteral("--target"), mountPoint
+        });
+        if (!sourceFinder.waitForFinished(1500) || sourceFinder.exitCode() != 0)
+            continue;
+
+        QString source = QString::fromLocal8Bit(sourceFinder.readAllStandardOutput()).trimmed();
+        const qsizetype subvolumeMarker = source.indexOf(QLatin1Char('['));
+        if (subvolumeMarker >= 0)
+            source.truncate(subvolumeMarker);
+        if (!source.startsWith(QStringLiteral("/dev/")))
+            continue;
+
+        const QString canonicalSource = QFileInfo(source).canonicalFilePath();
+        if (!canonicalSource.isEmpty())
+            source = canonicalSource;
+
+        QProcess ancestry;
+        ancestry.start(QStringLiteral("lsblk"), {
+            QStringLiteral("-s"), QStringLiteral("-n"),
+            QStringLiteral("-p"), QStringLiteral("-o"),
+            QStringLiteral("PATH,TYPE"), source
+        });
+        if (!ancestry.waitForFinished(2000) || ancestry.exitCode() != 0)
+            continue;
+
+        const QStringList lines = QString::fromLocal8Bit(ancestry.readAllStandardOutput()).split(QLatin1Char('\n'));
+        for (const QString &line : lines) {
+            const QStringList columns = line.simplified().split(QLatin1Char(' '));
+            if (columns.size() < 2 || columns.constLast() != QStringLiteral("disk"))
+                continue;
+            const QString canonicalDisk = QFileInfo(columns.constFirst()).canonicalFilePath();
+            systemDisks.insert(canonicalDisk.isEmpty() ? columns.constFirst() : canonicalDisk);
+        }
     }
     const QJsonDocument document = QJsonDocument::fromJson(lsblk.readAllStandardOutput());
     QVariantList detected;
@@ -52,7 +91,7 @@ void InstallerService::refreshHardware()
         disk.insert(QStringLiteral("size"), object.value(QStringLiteral("size")).toVariant().toLongLong());
         disk.insert(QStringLiteral("model"), object.value(QStringLiteral("model")).toString().trimmed());
         disk.insert(QStringLiteral("partitionTable"), object.value(QStringLiteral("pttype")).toString());
-        disk.insert(QStringLiteral("systemDisk"), path == rootParent);
+        disk.insert(QStringLiteral("systemDisk"), systemDisks.contains(QFileInfo(path).canonicalFilePath().isEmpty() ? path : QFileInfo(path).canonicalFilePath()));
         disk.insert(QStringLiteral("partitions"), object.value(QStringLiteral("children")).toArray().size());
         detected.append(disk);
     }
@@ -83,7 +122,11 @@ bool InstallerService::validateConfiguration(const QVariantMap &configuration, Q
     static const QRegularExpression accountPattern(QStringLiteral("^[a-z_][a-z0-9_-]{0,30}$"));
     static const QRegularExpression hostPattern(QStringLiteral("^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$"));
     if (!accountPattern.match(userName).hasMatch() || !hostPattern.match(hostName).hasMatch()) { *error = QStringLiteral("User or host name contains unsupported characters."); return false; }
-    if (password.size() < 8) { *error = QStringLiteral("Use a password with at least 8 characters."); return false; }
+    if (password.size() < 8 || password.contains(QLatin1Char(':')) ||
+        password.contains(QLatin1Char('\n')) || password.contains(QLatin1Char('\r'))) {
+        *error = QStringLiteral("Use at least 8 characters; colons and line breaks are not allowed.");
+        return false;
+    }
     return true;
 }
 bool InstallerService::startInstall(const QVariantMap &configuration)
