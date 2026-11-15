@@ -128,6 +128,23 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("util-linux", downloader)
         self.assertIn('destination="$stage/opt/brainos/szh"', bundler)
 
+    def test_rootfs_verifier_checks_szh_runtime_and_toybox_isolation(self):
+        for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
+            verifier = self.read(path)
+            self.assertIn('SZH_ROOTFS="$ROOTFS/opt/brainos/szh"', verifier)
+            self.assertIn("SZH_ROOTFS_OK", verifier)
+            self.assertIn("libreadline.so.8", verifier)
+            self.assertIn("libncursesw.so.6", verifier)
+            self.assertIn("/lib/ld-musl-x86_64.so.1", verifier)
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        self.assertIn("python3 curl sha1sum script;", merger)
+
+    def test_terminal_output_is_scrollable_and_follows_latest_output(self):
+        qml = self.read("kit/brainos-qt/qml/pages/TerminalPage.qml")
+        self.assertIn("Flickable {", qml)
+        self.assertIn("ScrollBar.vertical", qml)
+        self.assertIn("outputScroll.contentY", qml)
+
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
         script = ROOT / "kit/brainos-qt/packaging/build-iso.sh"
         self.assertTrue(script.is_file())

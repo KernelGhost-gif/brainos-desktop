@@ -33,3 +33,6 @@ No successful end-to-end Qt desktop boot is claimed by these source-level tests.
 - A persistent util-linux `script` PTY carries input and output; Ctrl+C and Ctrl+D are forwarded from the UI.
 - CI runs a shell command inside SZH and exercises a PTY command/exit sequence from the extracted release archive.
 - SZH runs as the current BrainOS user on the host filesystem. It is not a chroot or security boundary, and the current text UI is not full-screen VT emulation.
+
+
+The successful SZH smoke-test CI run (commit `8896d48700da72a7b74c8768e6baf586889345ec`) also verified the Qt compile, SZH shell command execution, PTY command/exit path and uploaded the runtime artifact. The subsequent terminal-scroll UI commit is under the same CI workflow.

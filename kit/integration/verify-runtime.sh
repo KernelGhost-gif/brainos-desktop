@@ -52,4 +52,27 @@ find "$ROOTFS/usr/lib" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so
 exists "$ROOTFS/etc/fonts/fonts.conf" || fail "fontconfig configuration missing"
 exists "$ROOTFS/etc/ssl/certs/ca-certificates.crt" || fail "CA certificates bundle missing"
 exists "$ROOTFS/usr/bin/dbus-run-session" || exists "$ROOTFS/bin/dbus-run-session" || fail "target dbus-run-session missing"
+# Verify the separate SZH runtime without replacing the original Toybox binaries.
+SZH_ROOTFS="$ROOTFS/opt/brainos/szh"
+for file in "$SZH_ROOTFS/szh-shell" "$SZH_ROOTFS/bin/sh.real" \
+            "$SZH_ROOTFS/bin/toybox.real" "$SZH_ROOTFS/lib/ld-musl-x86_64.so.1"; do
+  [[ -x "$file" ]] || fail "SZH executable missing or not executable: $file"
+done
+for file in "$SZH_ROOTFS/usr/lib/libreadline.so.8" "$SZH_ROOTFS/usr/lib/libncursesw.so.6"; do
+  [[ -f "$file" ]] || fail "SZH shared library missing: $file"
+done
+exists "$SZH_ROOTFS/lib/libc.musl-x86_64.so.1" || fail "SZH libc loader alias missing"
+exists "$SZH_ROOTFS/usr/lib/libc.musl-x86_64.so.1" || fail "SZH usr/lib libc loader alias missing"
+exists "$SZH_ROOTFS/bin/ls" || fail "SZH Toybox applet wrapper missing: ls"
+[[ -x "$ROOTFS/usr/bin/script" || -x "$ROOTFS/bin/script" ]] || fail "util-linux script PTY command missing from target rootfs"
+readelf -l "$SZH_ROOTFS/bin/sh.real" | grep -F '/lib/ld-musl-x86_64.so.1' >/dev/null || fail "SZH shell has an unexpected ELF interpreter"
+readelf -d "$SZH_ROOTFS/bin/sh.real" | grep -F 'libreadline.so.8' >/dev/null || fail "SZH shell is missing its readline dependency"
+readelf -d "$SZH_ROOTFS/usr/lib/libreadline.so.8" | grep -F 'libncursesw.so.6' >/dev/null || fail "SZH readline is missing its ncurses dependency"
+szh_output="$(SZH_ROOT="$SZH_ROOTFS" "$SZH_ROOTFS/szh-shell" -c 'echo SZH_ROOTFS_OK; ls "$SZH_ROOT/bin/sh.real" >/dev/null' 2>&1)" || {
+  echo "$szh_output" >&2
+  fail "bundled SZH shell failed its rootfs command smoke test"
+}
+grep -q 'SZH_ROOTFS_OK' <<<"$szh_output" || fail "bundled SZH shell did not produce its smoke-test marker"
+echo "[runtime-audit] PASS: isolated SZH shell and Toybox runtime are executable."
+
 echo "[runtime-audit] PASS: BrainOS glibc/Qt/WebEngine runtime closure assets are present."

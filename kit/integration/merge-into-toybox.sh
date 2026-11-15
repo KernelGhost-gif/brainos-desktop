@@ -13,7 +13,7 @@ RCS="$ROOTFS/etc/init.d/rcS"
 for f in "$ROOTFS/bin/toybox" "$ROOTFS/bin/sh" "$ROOTFS/bin/su" "$ROOTFS/bin/id" "$INITTAB" "$RCS" "$DEPS_ZIP" "$DESKTOP_BIN"; do
   [[ -e "$f" ]] || { echo "Required input missing: $f" >&2; exit 2; }
 done
-for tool in unzip dpkg-deb readelf python3 curl sha1sum; do command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }; done
+for tool in unzip dpkg-deb readelf python3 curl sha1sum script; do command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }; done
 
 # Confirm the original command provider uses musl before modifying anything.
 for tool in "$ROOTFS/bin/toybox" "$ROOTFS/bin/sh" "$ROOTFS/bin/su" "$ROOTFS/bin/id"; do

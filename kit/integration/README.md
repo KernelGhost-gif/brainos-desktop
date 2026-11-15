@@ -1,65 +1,35 @@
-# BrainOS Qt + Toybox integration
+# BrainOS Desktop integration test status
 
-This integration adds the BrainOS Qt 6 Wayland compositor to an existing x86_64 Toybox root filesystem. It preserves the Toybox/musl command provider and installs BrainOS under `/opt/brainos` while a separate glibc runtime closure provides `/lib64/ld-linux-x86-64.so.2`.
+Updated: 2026-11-14
 
-The source repository does not contain a complete Qt/glibc runtime `.deb` closure or the Linux/Toybox base tree. Generate the runtime ZIP with the downloader before running the merger. The merger inspects the bundle and fails closed when required packages are absent.
+## Source repository checks
 
-## 1. Build dependencies
+- Source-contract tests cover Qt Wayland/WebEngine requirements, Browser and Calculator registration, safe calculator parsing, kernel USER_NS requirements, CLI fallback markers, QEMU stability checks and Chromium sandbox preservation.
+- The initramfs regression test perturbs source timestamps and checks that two newc/gzip images are byte-identical with normalized metadata.
+- Shell and Python syntax checks run in the CI workflow.
+- GitHub Actions also configures and builds the Qt 6 source with Wayland Compositor and WebEngine Quick development packages.
 
-Install the Qt 6 packages listed in `kit/brainos-qt/packaging/README.md`, including `qt6-wayland-dev` and `qt6-webengine-dev`.
+## Inputs not included in this repository
 
-```bash
-cmake -S kit/brainos-qt -B out/qt-build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build out/qt-build --parallel
-```
+- The original ZIP's prebuilt x86_64 desktop executable is not committed. Build it from `kit/brainos-qt`.
+- A full target-side glibc/Qt/WebEngine `.deb` dependency closure is not supplied; generate it with `kit/integration/download_brainos_runtime_dependencies.py` and pass it to the merger.
+- The Linux kernel source tree, base kernel config and Toybox root filesystem are external inputs.
 
-## 2. Obtain the target runtime bundle
+## Runtime verification still required
 
-Run `download_brainos_runtime_dependencies.py` with Windows Python and WSL Ubuntu configured. It downloads the dependency closure using a fresh dpkg status database, so packages already installed in WSL are included without installing anything into WSL.
+- Successful Qt configure and compile in CI.
+- Runtime loader closure for BrainOS, Qt plugins, Wayland Compositor, WebEngine helper, ICU resources, locale packs, Mesa and NSS.
+- Kernel build with `CONFIG_USER_NS=y`, required seccomp, input, DRM and virtio options.
+- QEMU Toybox CLI boot and Qt desktop boot, Wayland socket readiness, WebEngine sandbox startup and live VNC framebuffer capture.
 
-```powershell
-py .\kit\integration\download_brainos_runtime_dependencies.py
-```
+No successful end-to-end Qt desktop boot is claimed by these source-level tests. Run `scripts/qemu-smoke-test.sh` against the completed kernel/initramfs/runtime inputs before calling the integration bootable.
 
-Review `brainos-runtime-dependencies-full.zip` before integrating it. The bundle needs glibc, C++ runtime, ICU, Qt Core/DBus/Gui/QML/Quick/Controls/Wayland/WebEngine, `QtWebEngineProcess`, WebEngine resources/locales, EGL/GLES, Mesa, DRM/GBM, Wayland, libinput, xkbcommon, udev, NSS/NSPR, OpenSSL, certificates, fontconfig and FreeType.
 
-## 3. Import and merge the Toybox rootfs
+## SZH terminal integration
 
-```bash
-./scripts/import-toybox-base.sh /path/to/linux_distro_original
-bash kit/integration/merge-into-toybox.sh \
-  linux_distro_original \
-  /path/to/brainos-runtime-dependencies-full.zip \
-  out/qt-build/brainos-desktop
-```
-
-The base project must contain `distro/fs`, `src/linux/.config` and the existing Toybox shell, `su`, `id`, `/etc/inittab` and `/etc/init.d/rcS`. Back up the target first. The merger checks that the Toybox command binaries use `/lib/ld-musl-x86_64.so.1` before modifying the rootfs. It also bundles the pinned SZH shell, matching musl loader/readline/ncurses libraries and Toybox command wrappers under `/opt/brainos/szh`; set `SZH_ROOTFS` to a local `linux_distro_original/distro/fs` directory to avoid downloading the pinned binary payloads. It extracts the glibc packages separately, installs BrainOS, creates an unprivileged session account, adds a launcher to init and builds a deterministic initramfs. The glibc dependency bundle must include the Qt Wayland Compositor and WebEngine runtime plugins and resources expected by `verify-runtime.sh`.
-
-Boot modes: `brainos.mode=cli` starts the original Toybox shell; `brainos.mode=desktop` starts BrainOS (default). A missing runtime or failed compositor returns to Toybox CLI. Chromium sandboxing stays enabled; there is no `--no-sandbox` fallback.
-
-## 4. Build the kernel
-
-```bash
-JOBS="$(nproc)" ./scripts/build-kernel.sh
-```
-
-The kernel source must exist under `linux_distro_original/src/linux` with the original `.config`. The build merges `kernel-userns.config`, runs `olddefconfig`, checks required symbols and stores the kernel, config and checksums under `out/kernel`.
-
-## 5. Build deterministic initramfs
-
-```bash
-SOURCE_DATE_EPOCH=0 ./scripts/build-initramfs.sh
-./scripts/test-initramfs-reproducible.sh
-```
-
-The packer normalizes file order, inode allocation, UID/GID, timestamps and gzip metadata.
-
-## 6. QEMU verification
-
-Install `qemu-system-x86`, `binutils`, `gzip` and `vncdotool` (`python3 -m pip install vncdotool`). Then run:
-
-```bash
-./scripts/qemu-smoke-test.sh
-```
-
-It tests the Toybox CLI boot and the desktop boot with virtio VGA and VNC, checks Wayland socket readiness and compositor stability, and saves serial logs/screenshots under `out/qemu`. A source check or deterministic initramfs is not proof of a successful Qt launch; QEMU verification with the complete runtime and kernel is a release gate.
+- Terminal source defaults to SZH `/bin/sh`, not a simulated command prompt.
+- The packaged payload includes the matching musl loader, readline, ncurses and Toybox multicall binary from the pinned SZH commit.
+- Each downloaded shell/runtime payload and the upstream license are verified against their Git blob SHA before packaging.
+- A persistent util-linux `script` PTY carries input and output; Ctrl+C and Ctrl+D are forwarded from the UI.
+- CI runs a shell command inside SZH and exercises a PTY command/exit sequence from the extracted release archive.
+- SZH runs as the current BrainOS user on the host filesystem. It is not a chroot or security boundary, and the current text UI is not full-screen VT emulation.
