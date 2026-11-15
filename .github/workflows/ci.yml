@@ -80,8 +80,9 @@ jobs:
           test -f "$runtime/szh/usr/lib/libncursesw.so.6"
           test -L "$runtime/szh/lib/libc.musl-x86_64.so.1"
           test -L "$runtime/szh/bin/ls"
-          SZH_ROOT="$runtime/szh" "$runtime/szh/szh-shell" -c 'echo SZH_SHELL_OK; ls "$SZH_ROOT/bin/toybox"' | grep -q SZH_SHELL_OK
-          pty_output="$(printf 'echo SZH_PTY_OK\\nexit\\n' | SZH_ROOT="$runtime/szh" script -q -f -e -c "$runtime/szh/szh-shell" /dev/null)"
+          shell_output="$(SZH_ROOT="$runtime/szh" "$runtime/szh/szh-shell" -c 'echo SZH_SHELL_OK; ls "$SZH_ROOT/bin/toybox"')"
+          grep -q SZH_SHELL_OK <<<"$shell_output"
+          pty_output="$(printf 'echo SZH_PTY_OK\nexit\n' | SZH_ROOT="$runtime/szh" script -q -f -e -c "$runtime/szh/szh-shell" /dev/null)"
           grep -q SZH_PTY_OK <<<"$pty_output"
           echo "Release archive passed Qt/WebEngine and SZH interactive PTY smoke checks."
       - name: Upload BrainOS runtime artifact
