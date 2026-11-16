@@ -2,7 +2,6 @@ name: BrainOS Full Build and Release
 
 on:
   create:
-    branches: ["release/**"]
 
 permissions:
   contents: write
