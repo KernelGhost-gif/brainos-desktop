@@ -17,8 +17,8 @@ from pathlib import Path
 
 PACKAGES = [
     "libc6", "libc-bin", "libgcc-s1", "libstdc++6",
-    "qt6-qpa-plugins", "qt6-wayland", "libqt6core6t64", "libqt6dbus6t64", "libqt6gui6",
-    "libqt6network6", "libqt6opengl6", "libqt6qml6", "libqt6qmlmodels6", "libqt6qmlworkerscript6",
+    "qt6-qpa-plugins", "qt6-wayland", "libqt6core6t64", "libqt6dbus6t64", "libqt6gui6t64",
+    "libqt6network6t64", "libqt6opengl6t64", "libqt6qml6", "libqt6qmlmodels6", "libqt6qmlworkerscript6",
     "libqt6quick6", "libqt6quickcontrols2-6", "libqt6quicktemplates2-6", "libqt6waylandcompositor6",
     "libqt6webchannel6",
     "libqt6webengine6-data", "libqt6webenginecore6", "libqt6webenginecore6-bin", "libqt6webenginequick6",
