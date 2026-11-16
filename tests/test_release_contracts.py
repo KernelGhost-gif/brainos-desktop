@@ -151,6 +151,13 @@ class BrainOSReleaseContracts(unittest.TestCase):
                             "libqt6webchannelquick6", "qml6-module-qtnetwork"):
             self.assertNotIn(unavailable, downloader)
 
+    def test_qt_dbus_runtime_uses_ubuntu_noble_t64_package(self):
+        downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        self.assertIn("libqt6dbus6t64", downloader)
+        self.assertIn("libqt6dbus6t64", merger)
+        self.assertNotIn('"libqt6core6t64", "libqt6dbus6",', downloader)
+
     def test_native_runtime_dependency_download_mode_exists(self):
         downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
         self.assertIn('parser.add_argument("--native"', downloader)

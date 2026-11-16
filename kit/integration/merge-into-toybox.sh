@@ -44,7 +44,7 @@ for deb in "${DEBS[@]}"; do
   [[ "$arch" == amd64 || "$arch" == all ]] || { echo "Unexpected package architecture $arch: $deb" >&2; exit 4; }
   PRESENT["$package"]="$deb"
 done
-required=(libc6 libc-bin libgcc-s1 libstdc++6 dbus dbus-daemon fontconfig libfontconfig1 libfreetype6 ca-certificates libnss3 libnspr4 libegl1 libgles2 libgl1 libgl1-mesa-dri libglx-mesa0 libdrm2 libgbm1 libwayland-client0 libwayland-server0 libwayland-egl1 libwayland-cursor0 libxkbcommon0 libinput10 libudev1 libqt6core6t64 libqt6dbus6 libqt6gui6 libqt6qml6 libqt6qmlmodels6 libqt6qmlworkerscript6 libqt6quick6 libqt6quickcontrols2-6 libqt6quicktemplates2-6 libqt6waylandcompositor6 libqt6webenginecore6 libqt6webenginequick6 util-linux)
+required=(libc6 libc-bin libgcc-s1 libstdc++6 dbus dbus-daemon fontconfig libfontconfig1 libfreetype6 ca-certificates libnss3 libnspr4 libegl1 libgles2 libgl1 libgl1-mesa-dri libglx-mesa0 libdrm2 libgbm1 libwayland-client0 libwayland-server0 libwayland-egl1 libwayland-cursor0 libxkbcommon0 libinput10 libudev1 libqt6core6t64 libqt6dbus6t64 libqt6gui6 libqt6qml6 libqt6qmlmodels6 libqt6qmlworkerscript6 libqt6quick6 libqt6quickcontrols2-6 libqt6quicktemplates2-6 libqt6waylandcompositor6 libqt6webenginecore6 libqt6webenginequick6 util-linux)
 for package in "${required[@]}"; do [[ -n "${PRESENT[$package]:-}" ]] || { echo "Runtime bundle is incomplete: missing $package" >&2; exit 5; }; done
 icu_package=""
 for package in "${!PRESENT[@]}"; do
