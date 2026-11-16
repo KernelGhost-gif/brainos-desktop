@@ -27,7 +27,7 @@ PACKAGES = [
     "qml6-module-qtquick-layouts", "qml6-module-qtquick-window", "qml6-module-qtwayland-compositor",
     "qml6-module-qtwebengine", "qml6-module-qtwebengine-controlsdelegates",
     "dbus", "dbus-daemon", "dbus-bin", "dbus-session-bus-common",
-    "libegl1", "libgles2", "libgl1", "libgl1-mesa-dri", "libglx-mesa0", "libdrm2", "libgbm1",
+    "libegl1", "libgles2", "libgl1", "libgl1-mesa-dri", "mesa-libgallium", "libglx-mesa0", "libdrm2", "libgbm1",
     "libwayland-client0", "libwayland-server0", "libwayland-egl1", "libwayland-cursor0",
     "libxkbcommon0", "libinput10", "libudev1", "libnss3", "libnspr4", "ca-certificates",
     "fontconfig", "libfontconfig1", "libfreetype6", "fonts-dejavu-core", "util-linux",

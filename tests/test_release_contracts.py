@@ -174,6 +174,16 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('parser.add_argument("--output"', downloader)
         self.assertIn('runner = ["bash", "-lc", command]', downloader)
 
+    def test_ubuntu_noble_mesa_gallium_payload_is_bundled_and_verified(self):
+        downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        iso_packages = self.read("kit/brainos-qt/packaging/live-build/brainos.list.chroot")
+        self.assertIn("mesa-libgallium", downloader)
+        self.assertIn("mesa-libgallium", merger)
+        self.assertIn("mesa-libgallium", iso_packages)
+        for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
+            self.assertIn('find -L "$ROOTFS/usr/lib" "$ROOTFS/lib"', self.read(path))
+
     def test_glibc_interpreter_uses_ubuntu_noble_libc_layout(self):
         merger = self.read("kit/integration/merge-into-toybox.sh")
         self.assertIn('$TMP/stage/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2', merger)

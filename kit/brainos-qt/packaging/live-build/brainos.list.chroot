@@ -28,6 +28,7 @@ libwayland-server0
 libgles2
 libgbm1
 libgl1-mesa-dri
+mesa-libgallium
 libglx-mesa0
 libwayland-egl1
 libwayland-cursor0

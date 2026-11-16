@@ -48,7 +48,7 @@ if ! find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name icudtl.dat -print 
 fi
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name 'qtwebengine_resources*.pak' -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine resource .pak files missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type d -name qtwebengine_locales -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine locales missing"
-find "$ROOTFS/usr/lib" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so \) -print -quit 2>/dev/null | grep -q . || fail "Mesa software DRI driver missing"
+find -L "$ROOTFS/usr/lib" "$ROOTFS/lib" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so \) -print -quit 2>/dev/null | grep -q . || fail "Mesa software DRI driver missing (including mesa-libgallium targets)"
 exists "$ROOTFS/etc/fonts/fonts.conf" || fail "fontconfig configuration missing"
 exists "$ROOTFS/etc/ssl/certs/ca-certificates.crt" || fail "CA certificates bundle missing"
 exists "$ROOTFS/usr/bin/dbus-run-session" || exists "$ROOTFS/bin/dbus-run-session" || fail "target dbus-run-session missing"
