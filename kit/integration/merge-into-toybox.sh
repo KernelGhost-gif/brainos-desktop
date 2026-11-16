@@ -54,9 +54,11 @@ done
 
 # Extract first into a staging tree. No target file is changed until preflight passes.
 for deb in "${DEBS[@]}"; do dpkg-deb -x "$deb" "$TMP/stage"; done
-loader="$TMP/stage/lib64/ld-linux-x86-64.so.2"
+loader="$TMP/stage/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
+[[ -e "$loader" ]] || loader="$TMP/stage/usr/lib64/ld-linux-x86-64.so.2"
+[[ -e "$loader" ]] || loader="$TMP/stage/lib64/ld-linux-x86-64.so.2"
 [[ -e "$loader" ]] || loader="$TMP/stage/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
-[[ -e "$loader" ]] || { echo "glibc x86_64 loader missing from runtime package closure." >&2; exit 5; }
+[[ -e "$loader" ]] || { echo "glibc x86_64 loader missing from runtime package closure; searched /usr/lib, /usr/lib64, /lib64 and /lib." >&2; exit 5; }
 install -d "$ROOTFS"
 cp -a "$TMP/stage/." "$ROOTFS/"
 install -d "$ROOTFS/opt/brainos/bin" "$ROOTFS/sbin" "$ROOTFS/etc/sysctl.d" "$ROOTFS/run/user/1000"
@@ -67,9 +69,13 @@ install -m 0755 "$KIT_DIR/integration/verify-runtime.sh" "$ROOTFS/opt/brainos/bi
 
 # Ensure the isolated glibc loader is discoverable without touching musl paths.
 mkdir -p "$ROOTFS/lib64"
-if [[ ! -e "$ROOTFS/lib64/ld-linux-x86-64.so.2" ]]; then
-  ln -s ../lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 "$ROOTFS/lib64/ld-linux-x86-64.so.2"
+if [[ ! -e "$ROOTFS/lib64/ld-linux-x86-64.so.2" && ! -L "$ROOTFS/lib64/ld-linux-x86-64.so.2" ]]; then
+  ln -s ../usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 "$ROOTFS/lib64/ld-linux-x86-64.so.2"
 fi
+[[ -e "$ROOTFS/lib64/ld-linux-x86-64.so.2" ]] || {
+  echo "Could not resolve the BrainOS glibc interpreter at /lib64/ld-linux-x86-64.so.2." >&2
+  exit 5
+}
 
 add_group() {
   local name="$1" gid="$2"

@@ -174,6 +174,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('parser.add_argument("--output"', downloader)
         self.assertIn('runner = ["bash", "-lc", command]', downloader)
 
+    def test_glibc_interpreter_uses_ubuntu_noble_libc_layout(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        self.assertIn('$TMP/stage/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2', merger)
+        self.assertIn('../usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2', merger)
+        self.assertIn('[[ -e "$ROOTFS/lib64/ld-linux-x86-64.so.2" ]]', merger)
+
     def test_merger_adds_missing_toybox_id_applet_link(self):
         merger = self.read("kit/integration/merge-into-toybox.sh")
         self.assertIn('ln -s toybox "$ROOTFS/bin/id"', merger)
