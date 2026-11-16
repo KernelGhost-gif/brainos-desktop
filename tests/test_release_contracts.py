@@ -145,6 +145,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("ScrollBar.vertical", qml)
         self.assertIn("outputScroll.contentY", qml)
 
+    def test_runtime_downloader_uses_ubuntu_noble_available_package_names(self):
+        downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        for unavailable in ("libqt6waylandcompositorxdgshell6",
+                            "libqt6webchannelquick6", "qml6-module-qtnetwork"):
+            self.assertNotIn(unavailable, downloader)
+
     def test_native_runtime_dependency_download_mode_exists(self):
         downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
         self.assertIn('parser.add_argument("--native"', downloader)
