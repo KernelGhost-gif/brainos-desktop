@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Download a complete Ubuntu amd64 Qt/WebEngine runtime dependency bundle through WSL apt.
+"""Download the Ubuntu amd64 Qt/WebEngine runtime dependency closure.
 
-Run with Windows Python. The resolver receives an empty dpkg status database,
-so packages already installed in WSL are included without installing anything.
+On Windows, run from Windows Python with WSL Ubuntu configured.
+On Linux (including GitHub Actions), pass --native and --output. In both
+modes an empty dpkg status database is used so already-installed packages
+are still included. Packages are downloaded, not installed into the host.
 """
 from __future__ import annotations
 
+import argparse
 import os
 import shlex
 import subprocess
@@ -31,21 +34,17 @@ PACKAGES = [
 ]
 
 
-def main() -> int:
-    if os.name != "nt":
-        print("Run this script with Windows Python so the ZIP lands in Windows Downloads.")
-        return 2
-
-    user = Path.home().name
-    output = f"/mnt/c/Users/{user}/Downloads/brainos-runtime-dependencies-full.zip"
+def make_command(output: Path, use_sudo: bool) -> str:
     root = "/tmp/brainos-full-runtime-dependencies"
     cache = f"{root}/archives"
     status = f"{root}/empty-dpkg-status"
     packages = " ".join(shlex.quote(package) for package in PACKAGES)
+    sudo = "sudo " if use_sudo else ""
+    output_text = str(output)
 
     zip_code = (
         "import hashlib,os,zipfile; "
-        f"root={cache!r}; out={output!r}; "
+        f"root={cache!r}; out={output_text!r}; "
         "debs=sorted(os.path.join(root,n) for n in os.listdir(root) if n.endswith('.deb')); "
         "assert debs, 'apt did not download any .deb packages'; "
         "z=zipfile.ZipFile(out,'w',compression=zipfile.ZIP_STORED); "
@@ -56,37 +55,64 @@ def main() -> int:
         "print('Created',out,'with',len(debs),'packages')"
     )
 
-    command = "set -eu; sudo apt-get update; "
-    command += 'ICU_PACKAGE=$(apt-cache pkgnames | grep -E "^libicu[0-9]+$" | sort -V | tail -n 1); '
+    command = f"set -eu; {sudo}apt-get update; "
+    command += 'ICU_PACKAGE="$(apt-cache pkgnames | grep -E "^libicu[0-9]+$" | sort -V | tail -n 1)"; '
     command += '[ -n "$ICU_PACKAGE" ] || { echo "No versioned ICU runtime package is available." >&2; exit 1; }; '
-    command += f"sudo rm -rf {shlex.quote(root)}; mkdir -p {shlex.quote(cache + '/partial')}; "
+    command += f"{sudo}rm -rf {shlex.quote(root)}; mkdir -p {shlex.quote(cache + '/partial')}; "
     command += f": > {shlex.quote(status)}; chmod 644 {shlex.quote(status)}; "
+    command += f"mkdir -p {shlex.quote(str(output.parent))}; "
     command += (
-        "sudo apt-get "
+        f"{sudo}apt-get "
         f"-o Dir::State::status={shlex.quote(status)} "
-        f"-o Dir::Cache::archives={shlex.quote(cache + '/')} "
+        f"-o Dir::Cache::archives={shlex.quote(cache + '/') } "
         f"-o Dir::Cache::pkgcache={shlex.quote(root + '/pkgcache.bin')} "
         f"-o Dir::Cache::srcpkgcache={shlex.quote(root + '/srcpkgcache.bin')} "
         "-o Debug::NoLocking=1 --download-only --yes --no-install-recommends install "
         + packages + ' "$ICU_PACKAGE"; '
     )
     command += (
-        f"sudo chown -R $(id -u):$(id -g) {shlex.quote(root)}; "
+        f"{sudo}chown -R $(id -u):$(id -g) {shlex.quote(root)}; "
         "python3 -c " + shlex.quote(zip_code)
     )
+    return command
 
-    print("Downloading a runtime dependency closure only; packages are not installed into WSL.")
-    print("Output:", Path.home() / "Downloads" / "brainos-runtime-dependencies-full.zip")
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--native", action="store_true",
+                        help="run apt directly on Linux instead of invoking WSL")
+    parser.add_argument("--output", type=Path,
+                        help="output ZIP path (required with --native)")
+    args = parser.parse_args()
+
+    if os.name == "nt":
+        if args.native:
+            parser.error("--native is only available on Linux")
+        user = Path.home().name
+        output = Path(f"/mnt/c/Users/{user}/Downloads/brainos-runtime-dependencies-full.zip")
+        command = make_command(output, use_sudo=True)
+        runner = ["wsl.exe", "--", "bash", "-lc", command]
+        print("Downloading through WSL Ubuntu; packages are not installed into WSL.")
+        print("Output:", Path.home() / "Downloads" / output.name)
+    elif os.name == "posix" and args.native:
+        if not args.output:
+            parser.error("--output is required with --native")
+        output = args.output.expanduser().resolve()
+        command = make_command(output, use_sudo=os.geteuid() != 0)
+        runner = ["bash", "-lc", command]
+        print("Downloading through native apt; packages are not installed into the build host.")
+        print("Output:", output)
+    else:
+        parser.error("Use Windows Python + WSL, or Linux with --native --output <file.zip>")
+
     try:
-        result = subprocess.run(["wsl.exe", "--", "bash", "-lc", command], check=False)
+        result = subprocess.run(runner, check=False)
     except OSError as exc:
-        print(f"Could not start WSL: {exc}", file=sys.stderr)
+        print(f"Could not start the package download command: {exc}", file=sys.stderr)
         return 1
-
     if result.returncode:
-        print(f"WSL download failed with exit code {result.returncode}.", file=sys.stderr)
+        print(f"Runtime dependency download failed with exit code {result.returncode}.", file=sys.stderr)
         return result.returncode
-
     print("Done. Verify the ZIP before using it in the rootfs merger.")
     return 0
 

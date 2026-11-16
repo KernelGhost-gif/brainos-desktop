@@ -10,9 +10,15 @@ KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOTFS="$PROJECT_ROOT/distro/fs"
 INITTAB="$ROOTFS/etc/inittab"
 RCS="$ROOTFS/etc/init.d/rcS"
-for f in "$ROOTFS/bin/toybox" "$ROOTFS/bin/sh" "$ROOTFS/bin/su" "$ROOTFS/bin/id" "$INITTAB" "$RCS" "$DEPS_ZIP" "$DESKTOP_BIN"; do
+for f in "$ROOTFS/bin/toybox" "$ROOTFS/bin/sh" "$ROOTFS/bin/su" "$INITTAB" "$RCS" "$DEPS_ZIP" "$DESKTOP_BIN"; do
   [[ -e "$f" ]] || { echo "Required input missing: $f" >&2; exit 2; }
 done
+
+# This SZH rootfs keeps the id applet inside Toybox instead of shipping a
+# separate /bin/id ELF. Add the conventional applet link for init scripts.
+if [[ ! -e "$ROOTFS/bin/id" && ! -L "$ROOTFS/bin/id" ]]; then
+  ln -s toybox "$ROOTFS/bin/id"
+fi
 for tool in unzip dpkg-deb readelf python3 curl sha1sum script; do command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }; done
 
 # Confirm the original command provider uses musl before modifying anything.
@@ -93,12 +99,6 @@ cat > "$ROOTFS/etc/brainos-release" <<'EOF'
 BrainOS Qt desktop integrated over the Toybox-based Linux userspace.
 Toybox remains the command provider for the original rootfs.
 EOF
-# Add the exact SZH shell/runtime as a separate /opt payload. The existing
-# /bin/sh, /bin/toybox and /lib/ld-musl paths remain untouched.
-SZH_BUNDLER="$KIT_DIR/brainos-qt/packaging/scripts/bundle-szh-terminal.sh"
-[[ -x "$SZH_BUNDLER" ]] || { echo "SZH terminal bundler is missing or not executable." >&2; exit 6; }
-SZH_ROOTFS="${SZH_ROOTFS:-}" "$SZH_BUNDLER" "$ROOTFS"
-
 # Add the exact SZH shell/runtime as a separate /opt payload. The existing
 # /bin/sh, /bin/toybox and /lib/ld-musl paths remain untouched.
 SZH_BUNDLER="$KIT_DIR/brainos-qt/packaging/scripts/bundle-szh-terminal.sh"

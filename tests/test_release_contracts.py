@@ -145,6 +145,29 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("ScrollBar.vertical", qml)
         self.assertIn("outputScroll.contentY", qml)
 
+    def test_native_runtime_dependency_download_mode_exists(self):
+        downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        self.assertIn('parser.add_argument("--native"', downloader)
+        self.assertIn('parser.add_argument("--output"', downloader)
+        self.assertIn('runner = ["bash", "-lc", command]', downloader)
+
+    def test_merger_adds_missing_toybox_id_applet_link(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        self.assertIn('ln -s toybox "$ROOTFS/bin/id"', merger)
+        self.assertIn('"$ROOTFS/bin/id"', merger)
+        self.assertIn('"$ROOTFS/bin/toybox"', merger)
+
+    def test_release_workflow_builds_all_readme_artifacts(self):
+        workflow = self.read(".github/workflows/release.yml")
+        for marker in ("build-release.sh", "download_brainos_runtime_dependencies.py",
+                       "merge-into-toybox.sh", "build-kernel.sh", "build-initramfs.sh",
+                       "qemu-smoke-test.sh", "build-iso.sh", "softprops/action-gh-release@v2"):
+            self.assertIn(marker, workflow)
+
+    def test_iso_builder_reuses_prebuilt_runtime_stage(self):
+        script = self.read("kit/brainos-qt/packaging/build-iso.sh")
+        self.assertIn("BRAINOS_PREBUILT_STAGE", script)
+        self.assertIn("Reusing the verified BrainOS runtime stage", script)
     def test_live_iso_builder_exists_and_is_syntax_checked_by_ci(self):
         script = ROOT / "kit/brainos-qt/packaging/build-iso.sh"
         self.assertTrue(script.is_file())

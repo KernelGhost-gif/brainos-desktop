@@ -13,7 +13,7 @@ Updated: 2026-11-14
 
 - The original ZIP's prebuilt x86_64 desktop executable is not committed. Build it from `kit/brainos-qt`.
 - A full target-side glibc/Qt/WebEngine `.deb` dependency closure is not supplied; generate it with `kit/integration/download_brainos_runtime_dependencies.py` and pass it to the merger.
-- The Linux kernel source tree, base kernel config and Toybox root filesystem are external inputs.
+- The Linux kernel source tree, base kernel config and Toybox root filesystem are fetched by the full release workflow from the pinned `KernelGhost-gif/szh` commit `1037b073d4ef62029548305b6b13fcd133e3a270`.
 
 ## Runtime verification still required
 

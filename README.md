@@ -67,6 +67,12 @@ SOURCE_DATE_EPOCH=0 ./scripts/build-initramfs.sh
 
 A kernel source checkout and complete runtime bundle are required for a bootable image. The QEMU script expects a built kernel/config and initramfs under `out/`. Source tests and deterministic initramfs tests are not proof of a graphical boot; real compositor/WebEngine/QEMU verification remains a release gate.
 
+## Full build and release
+
+Creating a branch named `release/vMAJOR.MINOR.PATCH` triggers the full release workflow. It checks out the pinned SZH Linux source and rootfs, builds the Qt desktop and SZH payload, downloads the glibc/Qt/WebEngine runtime closure, integrates BrainOS into the Toybox/musl rootfs, rebuilds the kernel with USER_NS/virtio options, builds a deterministic initramfs, boots both CLI and desktop modes in QEMU, and builds the Debian live ISO.
+
+The workflow publishes a GitHub Release only after every build, checksum and QEMU boot gate succeeds. The release contains the Qt runtime archive, Debian ISO, kernel image/config, initramfs, QEMU logs, desktop screenshot, and SHA-256 manifest. See `.github/workflows/release.yml`.
+
 ## CI
 
 GitHub Actions runs shell/Python syntax checks, source-contract tests, deterministic initramfs tests and a Qt 6 source build. The repository does not include the original prebuilt ELF executable or image bitmaps; build from the committed source. The complete runtime `.deb` archive and kernel/Toybox base tree are also external build inputs.

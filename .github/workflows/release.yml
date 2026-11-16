@@ -1,0 +1,194 @@
+name: BrainOS Full Build and Release
+
+on:
+  create:
+    branches: ["release/**"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: brainos-release-\${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    if: github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      SOURCE_DATE_EPOCH: "0"
+      JOBS: "2"
+    steps:
+      - name: Checkout BrainOS
+        uses: actions/checkout@v4
+        with:
+          path: brainos
+      - name: Checkout pinned SZH Linux base
+        uses: actions/checkout@v4
+        with:
+          repository: KernelGhost-gif/szh
+          ref: 1037b073d4ef62029548305b6b13fcd133e3a270
+          path: szh-source
+          sparse-checkout: linux_distro_original
+          sparse-checkout-cone-mode: true
+      - name: Determine release version
+        working-directory: brainos
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="\${GITHUB_REF_NAME#release/}"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || {
+            echo "Expected release branch release/vMAJOR.MINOR.PATCH; got $GITHUB_REF_NAME" >&2
+            exit 2
+          }
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "BRAINOS_VERSION=\${tag#v}" >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+          echo "Release target: $tag at $GITHUB_SHA"
+      - name: Install build, kernel, QEMU and ISO dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config binutils curl util-linux \
+            qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-wayland \
+            qml6-module-qtwayland-compositor qt6-webengine-dev \
+            qt6-tools-dev qt6-tools-dev-tools qt6-positioning-dev qt6-webchannel-dev \
+            libegl-dev libgl-dev libdrm-dev libgbm-dev libinput-dev \
+            libwayland-dev libxkbcommon-dev libudev-dev libdbus-1-dev \
+            libfontconfig1-dev libfreetype6-dev libnss3-dev libssl-dev \
+            bc bison flex libelf-dev libncurses-dev dwarves \
+            live-build qemu-system-x86 gzip cpio python3-pip
+          python3 -m pip install --break-system-packages vncdotool
+      - name: Validate source, shell scripts and deterministic archive
+        working-directory: brainos
+        run: |
+          set -euo pipefail
+          bash -n kit/integration/brainos-launch kit/integration/brainos-session
+          bash -n kit/integration/merge-into-toybox.sh kit/integration/verify-runtime.sh
+          bash -n kit/brainos-qt/packaging/build-release.sh kit/brainos-qt/packaging/build-iso.sh
+          bash -n kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh
+          bash -n kit/brainos-qt/packaging/scripts/bundle-szh-terminal.sh
+          bash -n scripts/*.sh
+          python3 -m py_compile kit/integration/*.py tests/*.py
+          python3 -m unittest discover -s tests -v
+          ./scripts/test-initramfs-reproducible.sh
+      - name: Build desktop, Qt/WebEngine runtime and SZH payload
+        working-directory: brainos
+        env:
+          BUILD_DIR: \${{ github.workspace }}/brainos/out/qt-build
+          STAGE_DIR: \${{ github.workspace }}/brainos/out/brainos-root
+          ARTIFACT_DIR: \${{ github.workspace }}/brainos/out/artifacts
+        run: ./kit/brainos-qt/packaging/build-release.sh
+      - name: Download target glibc/Qt runtime dependency closure
+        working-directory: brainos
+        run: |
+          mkdir -p out
+          python3 kit/integration/download_brainos_runtime_dependencies.py \
+            --native --output "$GITHUB_WORKSPACE/brainos/out/runtime-dependencies-full.zip"
+          sha256sum out/runtime-dependencies-full.zip > out/runtime-dependencies-full.zip.sha256
+      - name: Merge BrainOS into the pinned Toybox/musl rootfs
+        working-directory: brainos
+        env:
+          SZH_ROOTFS: \${{ github.workspace }}/szh-source/linux_distro_original/distro/fs
+        run: |
+          bash kit/integration/merge-into-toybox.sh \
+            "$GITHUB_WORKSPACE/szh-source/linux_distro_original" \
+            "$GITHUB_WORKSPACE/brainos/out/runtime-dependencies-full.zip" \
+            "$GITHUB_WORKSPACE/brainos/out/qt-build/brainos-desktop"
+      - name: Build Linux kernel with USER_NS and virtio graphics
+        working-directory: brainos
+        run: |
+          JOBS=2 ./scripts/build-kernel.sh \
+            "$GITHUB_WORKSPACE/szh-source/linux_distro_original/src/linux"
+      - name: Build deterministic BrainOS initramfs and verify checksum
+        working-directory: brainos
+        run: |
+          ./scripts/build-initramfs.sh \
+            "$GITHUB_WORKSPACE/szh-source/linux_distro_original/distro/fs" \
+            out/initramfs/brainos-initramfs.cpio.gz
+          sha256sum --check out/initramfs/brainos-initramfs.cpio.gz.sha256
+      - name: QEMU boot both Toybox CLI and BrainOS desktop
+        working-directory: brainos
+        env:
+          BOOT_WAIT: "120"
+          DESKTOP_STABILITY_SECONDS: "20"
+        run: ./scripts/qemu-smoke-test.sh
+      - name: Build Debian live ISO from the verified runtime stage
+        working-directory: brainos
+        env:
+          BRAINOS_PREBUILT_STAGE: \${{ github.workspace }}/brainos/out/brainos-root
+          BRAINOS_VERSION: \${{ env.BRAINOS_VERSION }}
+          ARTIFACT_DIR: \${{ github.workspace }}/brainos/out/artifacts
+          LIVE_BUILD_DIR: \${{ github.workspace }}/brainos/out/live-build-work
+          SOURCE_DATE_EPOCH: \${{ env.SOURCE_DATE_EPOCH }}
+        run: sudo -E ./kit/brainos-qt/packaging/build-iso.sh
+      - name: Assemble release checksums and notes
+        working-directory: brainos
+        run: |
+          set -euo pipefail
+          mkdir -p out/release
+          cp out/kernel/bzImage out/release/brainos-kernel-bzImage
+          cp out/kernel/kernel.config out/release/brainos-kernel.config
+          cp out/initramfs/brainos-initramfs.cpio.gz out/release/
+          cp out/initramfs/brainos-initramfs.cpio.gz.sha256 out/release/
+          cp out/qemu/cli-boot.log out/release/
+          cp out/qemu/desktop-boot.log out/release/
+          cp out/qemu/brainos-desktop.png out/release/
+          cp out/artifacts/brainos-runtime-\${BRAINOS_VERSION}-x86_64.tar.gz out/release/
+          cp out/artifacts/brainos-runtime-\${BRAINOS_VERSION}-x86_64.tar.gz.sha256 out/release/
+          cp out/artifacts/brainos-desktop-\${BRAINOS_VERSION}-amd64.iso out/release/
+          cp out/artifacts/brainos-desktop-\${BRAINOS_VERSION}-amd64.iso.sha256 out/release/
+          (cd out/release && sha256sum -- * > SHA256SUMS)
+          cat > out/release/RELEASE-NOTES.md <<EOF
+          # BrainOS Desktop \${RELEASE_TAG}
+
+          This release was built from commit \${GITHUB_SHA}.
+
+          Included artifacts:
+          - Qt 6 / Wayland BrainOS desktop with bundled Qt WebEngine and pinned SZH shell.
+          - Debian amd64 live ISO.
+          - Linux kernel rebuilt with the BrainOS USER_NS/virtio configuration.
+          - Deterministic Toybox/musl initramfs.
+          - QEMU serial logs and desktop screenshot proving both boot paths.
+
+          The SZH terminal is an embedded user shell and command runtime. It is not a chroot or security boundary.
+          EOF
+      - name: Upload full-build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brainos-release-build-evidence
+          path: |
+            brainos/out/runtime-dependencies-full.zip.sha256
+            brainos/out/kernel/
+            brainos/out/initramfs/
+            brainos/out/qemu/
+            brainos/out/artifacts/
+            brainos/out/release/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: \${{ env.RELEASE_TAG }}
+          target_commitish: \${{ github.sha }}
+          name: BrainOS Desktop \${{ env.RELEASE_TAG }}
+          body_path: brainos/out/release/RELEASE-NOTES.md
+          files: |
+            brainos/out/release/brainos-runtime-\${{ env.BRAINOS_VERSION }}-x86_64.tar.gz
+            brainos/out/release/brainos-runtime-\${{ env.BRAINOS_VERSION }}-x86_64.tar.gz.sha256
+            brainos/out/release/brainos-desktop-\${{ env.BRAINOS_VERSION }}-amd64.iso
+            brainos/out/release/brainos-desktop-\${{ env.BRAINOS_VERSION }}-amd64.iso.sha256
+            brainos/out/release/brainos-kernel-bzImage
+            brainos/out/release/brainos-kernel.config
+            brainos/out/release/brainos-initramfs.cpio.gz
+            brainos/out/release/brainos-initramfs.cpio.gz.sha256
+            brainos/out/release/cli-boot.log
+            brainos/out/release/desktop-boot.log
+            brainos/out/release/brainos-desktop.png
+            brainos/out/release/SHA256SUMS
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true

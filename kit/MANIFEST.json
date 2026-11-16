@@ -22,9 +22,10 @@
     "kernel/initramfs build and QEMU smoke-test scripts",
     "GitHub Actions source and Qt build workflow",
     "source-contract and reproducible archive tests",
-    "Pinned SZH musl shell, readline/ncurses runtime, and Toybox applet command wrappers"
+    "Pinned SZH musl shell, readline/ncurses runtime, and Toybox applet command wrappers",
+    "tag-triggered full build and GitHub release workflow"
   ],
-  "important_status": "Source-level checks and reproducible archive tests are included. Qt compilation, full runtime closure, kernel build and real QEMU desktop boot must pass before release.",
+  "important_status": "The full release workflow builds the Qt runtime, integrates the pinned SZH Toybox base, rebuilds the kernel and initramfs, runs both QEMU boot paths, builds the Debian live ISO, and publishes assets only when all gates pass.",
   "terminal": {
     "default_shell": "SZH /bin/sh",
     "command_provider": "Toybox multicall applets",

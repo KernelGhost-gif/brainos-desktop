@@ -35,10 +35,19 @@ version="${BRAINOS_VERSION:-$(date -u +%Y.%m.%d)}"
 mkdir -p "$artifact_dir"
 artifact_dir="$(cd "$artifact_dir" && pwd)"
 
-echo "[iso] Building BrainOS and staging the bundled Qt runtime."
-STAGE_DIR="$stage" ARTIFACT_DIR="$live_build_dir/release-artifacts" \
-  SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}" \
-  "$script_dir/build-release.sh"
+if [[ -n "${BRAINOS_PREBUILT_STAGE:-}" ]]; then
+  stage="$(cd "$BRAINOS_PREBUILT_STAGE" && pwd)"
+  [[ -x "$stage/opt/brainos/bin/brainos-desktop" ]] || {
+    echo "Prebuilt BrainOS stage is incomplete: $stage" >&2
+    exit 1
+  }
+  echo "[iso] Reusing the verified BrainOS runtime stage at $stage."
+else
+  echo "[iso] Building BrainOS and staging the bundled Qt runtime."
+  STAGE_DIR="$stage" ARTIFACT_DIR="$live_build_dir/release-artifacts" \
+    SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}" \
+    "$script_dir/build-release.sh"
+fi
 
 cd "$live_build_dir"
 echo "[iso] Preparing Debian live-build configuration ($suite, amd64)."
