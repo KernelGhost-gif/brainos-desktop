@@ -163,6 +163,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
                        "merge-into-toybox.sh", "build-kernel.sh", "build-initramfs.sh",
                        "qemu-smoke-test.sh", "build-iso.sh", "softprops/action-gh-release@v2"):
             self.assertIn(marker, workflow)
+        self.assertNotIn("\\${", workflow)
 
     def test_iso_builder_reuses_prebuilt_runtime_stage(self):
         script = self.read("kit/brainos-qt/packaging/build-iso.sh")
