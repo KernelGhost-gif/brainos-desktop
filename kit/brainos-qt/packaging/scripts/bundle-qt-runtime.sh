@@ -62,7 +62,7 @@ done
 # so nested QtQuick, QtQml, QtWayland and QtWebEngine plugins resolve at runtime.
 [[ -d "$qt_qml" ]] || { echo "Qt QML import directory is missing: $qt_qml" >&2; exit 1; }
 cp -a "$qt_qml/." "$destination/qml/"
-for module in QtQuick/Controls QtQuick/Layouts QtQuick/Window \
+for module in QtQuick/Controls QtQuick/Templates QtQuick/Layouts QtQuick/Window \
               QtQml/WorkerScript QtWayland/Compositor \
               QtWayland/Compositor/XdgShell QtWebEngine; do
   [[ -s "$destination/qml/$module/qmldir" ]] || {
