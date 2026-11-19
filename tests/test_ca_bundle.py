@@ -40,6 +40,23 @@ class BuildCaBundleTests(unittest.TestCase):
             self.assertIn(CERT_B, bundle)
             self.assertEqual((root / "etc/ssl/certs/ca-certificates.crt").stat().st_mode & 0o777, 0o644)
 
+    def test_fresh_rootfs_defaults_to_all_packaged_roots_and_writes_config(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.make_root(root)
+            (root / "etc/ca-certificates.conf").unlink()
+
+            count = build_bundle(root)
+            bundle = (root / "etc/ssl/certs/ca-certificates.crt").read_bytes()
+            config = (root / "etc/ca-certificates.conf").read_text(encoding="utf-8")
+
+            self.assertEqual(count, 3)
+            self.assertEqual(bundle.count(b"-----BEGIN CERTIFICATE-----"), 3)
+            self.assertNotIn(b"DISABLED", bundle)
+            self.assertIn("mozilla/a.crt", config)
+            self.assertIn("mozilla/disabled.crt", config)
+            self.assertIn("mozilla/b.crt", config)
+
     def test_missing_configured_certificate_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
