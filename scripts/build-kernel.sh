@@ -9,13 +9,16 @@ JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}"
 [[ -d "$KERNEL_SRC" ]] || { echo "Kernel source tree not found: $KERNEL_SRC" >&2; exit 2; }
 [[ -f "$KERNEL_SRC/.config" ]] || { echo "Kernel source .config not found: $KERNEL_SRC/.config" >&2; exit 2; }
 [[ -f "$FRAGMENT" ]] || { echo "Kernel config fragment not found: $FRAGMENT" >&2; exit 2; }
-[[ -x "$KERNEL_SRC/scripts/config" ]] || { echo "Kernel scripts/config is missing." >&2; exit 2; }
+[[ -f "$KERNEL_SRC/scripts/config" ]] || { echo "Kernel scripts/config is missing." >&2; exit 2; }
+# The pinned SZH kernel tree tracks scripts/config as mode 100644. Run it
+# through Bash instead of requiring its checkout mode to be executable.
+config_tool() { bash "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" "$@"; }
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"; cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
 while IFS= read -r line; do
  case "$line" in
-  CONFIG_*=y) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" --enable "$symbol";;
-  CONFIG_*=m) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" --module "$symbol";;
-  CONFIG_*=n) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" --disable "$symbol";;
+  CONFIG_*=y) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; config_tool --enable "$symbol";;
+  CONFIG_*=m) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; config_tool --module "$symbol";;
+  CONFIG_*=n) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; config_tool --disable "$symbol";;
  esac
 done < "$FRAGMENT"
 make -C "$KERNEL_SRC" O="$BUILD_DIR" ARCH=x86_64 olddefconfig

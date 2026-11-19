@@ -256,6 +256,13 @@ class BrainOSReleaseContracts(unittest.TestCase):
             self.assertIn(marker, workflow)
         self.assertNotIn("\\${", workflow)
 
+    def test_kernel_config_helper_runs_when_tracked_non_executable(self):
+        script = self.read("scripts/build-kernel.sh")
+        self.assertIn('[[ -f "$KERNEL_SRC/scripts/config" ]]', script)
+        self.assertIn('config_tool() { bash "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" "$@"; }', script)
+        self.assertIn("config_tool --enable", script)
+        self.assertNotIn('[[ -x "$KERNEL_SRC/scripts/config" ]]', script)
+
     def test_iso_builder_reuses_prebuilt_runtime_stage(self):
         script = self.read("kit/brainos-qt/packaging/build-iso.sh")
         self.assertIn("BRAINOS_PREBUILT_STAGE", script)
