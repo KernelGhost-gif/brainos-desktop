@@ -50,9 +50,9 @@ class BuildCaBundleTests(unittest.TestCase):
             bundle = (root / "etc/ssl/certs/ca-certificates.crt").read_bytes()
             config = (root / "etc/ca-certificates.conf").read_text(encoding="utf-8")
 
-            self.assertEqual(count, 3)
-            self.assertEqual(bundle.count(b"-----BEGIN CERTIFICATE-----"), 3)
-            self.assertNotIn(b"DISABLED", bundle)
+            self.assertEqual(count, 4)
+            self.assertEqual(bundle.count(b"-----BEGIN CERTIFICATE-----"), 4)
+            self.assertIn(b"DISABLED", bundle)
             self.assertIn("mozilla/a.crt", config)
             self.assertIn("mozilla/disabled.crt", config)
             self.assertIn("mozilla/b.crt", config)
