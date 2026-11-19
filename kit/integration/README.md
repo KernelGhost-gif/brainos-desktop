@@ -30,6 +30,6 @@ No successful end-to-end Qt desktop boot is claimed by these source-level tests.
 - Terminal source defaults to SZH `/bin/sh`, not a simulated command prompt.
 - The packaged payload includes the matching musl loader, readline, ncurses and Toybox multicall binary from the pinned SZH commit.
 - Each downloaded shell/runtime payload and the upstream license are verified against their Git blob SHA before packaging.
-- A persistent util-linux `script` PTY carries input and output; Ctrl+C and Ctrl+D are forwarded from the UI.
+- A persistent `script` PTY (provided by Ubuntu’s `bsdutils` package) carries input and output; Ctrl+C and Ctrl+D are forwarded from the UI.
 - CI runs a shell command inside SZH and exercises a PTY command/exit sequence from the extracted release archive.
 - SZH runs as the current BrainOS user on the host filesystem. It is not a chroot or security boundary, and the current text UI is not full-screen VT emulation.

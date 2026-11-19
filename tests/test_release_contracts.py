@@ -174,7 +174,9 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('"$ROOTFS/bin/sh"', merger)
         self.assertIn('"$ROOTFS/bin/toybox"', merger)
         self.assertIn("util-linux", merger)
+        self.assertIn("bsdutils", merger)
         downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        self.assertIn('"bsdutils"', downloader)
         self.assertIn("util-linux", downloader)
         self.assertIn('destination="$stage/opt/brainos/szh"', bundler)
 
