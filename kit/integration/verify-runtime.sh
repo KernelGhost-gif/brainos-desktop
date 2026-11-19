@@ -39,7 +39,7 @@ PLUGIN_ROOT="$ROOTFS/usr/lib/x86_64-linux-gnu/qt6"
 for plugin in "$PLUGIN_ROOT/plugins/platforms/libqeglfs.so" "$PLUGIN_ROOT/plugins/egldeviceintegrations/libqeglfs-kms-integration.so" "$PLUGIN_ROOT/qml/QtWayland/Compositor/libqwaylandcompositorplugin.so" "$PLUGIN_ROOT/qml/QtWayland/Compositor/XdgShell/libwaylandcompositorxdgshellplugin.so" "$PLUGIN_ROOT/qml/QtWebEngine/libqtwebenginequickplugin.so"; do
   exists "$plugin" || fail "required Qt plugin missing: $plugin"; check_elf "$plugin"
 done
-for module in QtQuick/Controls QtQuick/Layouts QtQuick/Window QtQml/WorkerScript \
+for module in QtQuick/Controls QtQuick/Templates QtQuick/Layouts QtQuick/Window QtQml/WorkerScript \
               QtWayland/Compositor QtWayland/Compositor/XdgShell QtWebEngine; do
   exists "$PLUGIN_ROOT/qml/$module/qmldir" || fail "required Qt QML module is missing: $module"
 done
