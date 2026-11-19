@@ -57,10 +57,18 @@ for plugin_group in platforms egldeviceintegrations imageformats iconengines \
     < <(find "$qt_plugins/$plugin_group" -type f -name '*.so*' -print | LC_ALL=C sort)
 done
 
-# BrainOS imports QtQuick.Controls, QtQuick.Layouts, QtWayland and QtWebEngine.
-for module in QtCore QtQml QtQml.Models QtQuick QtQuick.2 QtQuick.Controls \
-              QtQuick.Layouts QtWayland QtWebEngine; do
-  [[ -d "$qt_qml/$module" ]] && cp -a "$qt_qml/$module" "$destination/qml/"
+# QML modules are installed using URI paths (for example QtQuick/Controls),
+# not dotted directory names (QtQuick.Controls). Copy the complete import tree
+# so nested QtQuick, QtQml, QtWayland and QtWebEngine plugins resolve at runtime.
+[[ -d "$qt_qml" ]] || { echo "Qt QML import directory is missing: $qt_qml" >&2; exit 1; }
+cp -a "$qt_qml/." "$destination/qml/"
+for module in QtQuick/Controls QtQuick/Layouts QtQuick/Window \
+              QtQml/WorkerScript QtWayland/Compositor \
+              QtWayland/Compositor/XdgShell QtWebEngine; do
+  [[ -s "$destination/qml/$module/qmldir" ]] || {
+    echo "Required Qt QML module is missing from the runtime bundle: $module" >&2
+    exit 1
+  }
 done
 
 # QML import plugins are loaded lazily by the engine, so their dependencies

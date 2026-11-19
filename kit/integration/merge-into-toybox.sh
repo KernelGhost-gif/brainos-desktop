@@ -61,6 +61,9 @@ loader="$TMP/stage/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
 [[ -e "$loader" ]] || { echo "glibc x86_64 loader missing from runtime package closure; searched /usr/lib, /usr/lib64, /lib64 and /lib." >&2; exit 5; }
 install -d "$ROOTFS"
 cp -a "$TMP/stage/." "$ROOTFS/"
+# dpkg-deb -x does not execute ca-certificates' postinst hook. Generate the
+# consolidated trust bundle from the package's selected Mozilla/local PEMs.
+python3 "$KIT_DIR/integration/build_ca_bundle.py" "$ROOTFS"
 install -d "$ROOTFS/opt/brainos/bin" "$ROOTFS/sbin" "$ROOTFS/etc/sysctl.d" "$ROOTFS/run/user/1000"
 install -m 0755 "$DESKTOP_BIN" "$ROOTFS/opt/brainos/bin/brainos-desktop"
 install -m 0755 "$KIT_DIR/integration/brainos-session" "$ROOTFS/opt/brainos/bin/brainos-session"

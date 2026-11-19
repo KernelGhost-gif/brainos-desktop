@@ -35,7 +35,31 @@ start_qemu() {
     sleep "$DESKTOP_STABILITY_SECONDS"
     kill -0 "$ACTIVE_QEMU_PID" 2>/dev/null || { echo "BrainOS exited during compositor stability window." >&2; cat "$log" >&2; return 1; }
     if grep -Eiq 'error while loading shared libraries|not found|sandbox.*(fatal|failed)|zygote.*(fatal|failed)|no usable sandbox' "$log"; then cat "$log" >&2; return 1; fi
-    if [[ -n "$screenshot" ]]; then command -v vncdotool >/dev/null || { echo "vncdotool is required" >&2; return 2; }; local vnc_host="${VNC_DISPLAY%:*}"; local vnc_port=$((5900 + ${VNC_DISPLAY##*:})); vncdotool -s "${vnc_host}:${vnc_port}" capture "$screenshot"; [[ -s "$screenshot" ]] || return 1; fi
+    if [[ -n "$screenshot" ]]; then
+      command -v vncdotool >/dev/null || { echo "vncdotool is required" >&2; return 2; }
+      local vnc_host="${VNC_DISPLAY%:*}"
+      local vnc_port=$((5900 + ${VNC_DISPLAY##*:}))
+      vncdotool -s "${vnc_host}:${vnc_port}" capture "$screenshot"
+      python3 - "$screenshot" <<'PY'
+from pathlib import Path
+import sys
+from PIL import Image, ImageStat
+
+path = Path(sys.argv[1])
+if not path.is_file() or path.stat().st_size < 4096:
+    raise SystemExit("QEMU desktop screenshot is missing or unexpectedly small")
+try:
+    image = Image.open(path).convert("RGB")
+    image.load()
+except Exception as exc:
+    raise SystemExit(f"QEMU desktop screenshot is not a readable image: {exc}")
+if image.width < 640 or image.height < 480:
+    raise SystemExit(f"QEMU desktop screenshot has implausible dimensions: {image.size}")
+if max(ImageStat.Stat(image).stddev) < 2.0:
+    raise SystemExit("QEMU desktop screenshot is effectively blank; refusing to publish it")
+print(f"[qemu] Screenshot verified: {path} ({image.width}x{image.height})")
+PY
+    fi
     echo "[qemu] PASS: Wayland socket created; compositor stayed alive and VNC framebuffer was captured."
   fi
   cleanup_active_qemu; echo "[qemu] serial log: $log"

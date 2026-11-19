@@ -50,6 +50,35 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('find "$destination/qml" -type f', bundler)
         self.assertIn('scan_dependencies "$plugin"', bundler)
 
+    def test_qml_resource_prefix_matches_the_runtime_engine_url(self):
+        cmake = self.read("kit/brainos-qt/CMakeLists.txt")
+        main = self.read("kit/brainos-qt/src/main.cpp")
+        self.assertIn('RESOURCE_PREFIX "/qt/qml"', cmake)
+        self.assertIn('qrc:/qt/qml/BrainOS/qml/Compositor.qml', main)
+        self.assertIn("screenshot.isNull()", main)
+        self.assertIn("screenshot.save(screenshotPath)", main)
+
+    def test_qml_runtime_bundle_preserves_the_actual_nested_module_layout(self):
+        bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh")
+        self.assertIn('cp -a "$qt_qml/." "$destination/qml/"', bundler)
+        for module in ("QtQuick/Controls", "QtQuick/Layouts", "QtQuick/Window",
+                       "QtQml/WorkerScript", "QtWayland/Compositor/XdgShell", "QtWebEngine"):
+            self.assertIn(module, bundler)
+
+    def test_certificate_bundle_is_generated_after_deb_extraction(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
+        self.assertIn('build_ca_bundle.py" "$ROOTFS"', merger)
+        self.assertIn('"ca-certificates"', downloader)
+        self.assertIn("ca-certificates.conf", self.read("kit/integration/build_ca_bundle.py"))
+        for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
+            self.assertIn("ca-certificates.crt", self.read(path))
+
+    def test_qemu_screenshot_gate_rejects_blank_or_invalid_images(self):
+        qemu = self.read("scripts/qemu-smoke-test.sh")
+        self.assertIn("ImageStat.Stat(image).stddev", qemu)
+        self.assertIn("QEMU desktop screenshot is effectively blank", qemu)
+
     def test_archive_verification_uses_portable_find_expression(self):
         workflow = self.read(".github/workflows/ci.yml")
         self.assertIn('find "$runtime/qt/qml" -type f -name \'*.so\' -print -quit | grep -q .', workflow)

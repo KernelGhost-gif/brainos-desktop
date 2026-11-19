@@ -1,4 +1,6 @@
-#include <QCommandLineParser>
+#include <QCommandLineParser
+#include <QDebug>
+#include <QImage>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -81,8 +83,19 @@ int main(int argc, char **argv)
                 if (window)
                     break;
             }
-            if (window)
-                window->grabWindow().save(screenshotPath);
+            if (!window) {
+                qCritical() << "Could not locate the BrainOS compositor window for screenshot capture.";
+                app.exit(2);
+                return;
+            }
+            const QImage screenshot = window->grabWindow();
+            if (screenshot.isNull() || !screenshot.save(screenshotPath)) {
+                qCritical() << "Could not capture or save the BrainOS screenshot:" << screenshotPath;
+                app.exit(3);
+                return;
+            }
+            qInfo() << "BrainOS screenshot saved:" << screenshotPath
+                    << screenshot.width() << "x" << screenshot.height();
             app.quit();
         });
     }

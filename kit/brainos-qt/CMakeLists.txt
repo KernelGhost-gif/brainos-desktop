@@ -7,7 +7,7 @@ qt_standard_project_setup()
 qt_add_executable(brainos-desktop)
 set_source_files_properties(qml/theme/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 file(GLOB BRAINOS_ICON_FILES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" CONFIGURE_DEPENDS "qml/assets/icons/*.svg")
-qt_add_qml_module(brainos-desktop URI BrainOS VERSION 1.0
+qt_add_qml_module(brainos-desktop URI BrainOS VERSION 1.0 RESOURCE_PREFIX "/qt/qml"
     QML_FILES
         qml/Compositor.qml qml/theme/Theme.qml
         qml/components/BootSplash.qml qml/components/AppIcon.qml qml/components/IconButton.qml qml/components/SectionCard.qml qml/components/WindowChrome.qml
