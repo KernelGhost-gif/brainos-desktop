@@ -13,7 +13,37 @@ JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}"
 # The pinned SZH kernel tree tracks scripts/config as mode 100644. Run it
 # through Bash instead of requiring its checkout mode to be executable.
 config_tool() { bash "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" "$@"; }
-mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"; cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
+mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
+cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
+
+# This SZH snapshot stores a kernel .config and generated Kbuild directories
+# in the source tree. Kbuild rejects those when O= is used. Stash only those
+# generated/config paths for the duration of the out-of-tree build, then
+# restore them even on failure; never run mrproper against the pinned source.
+SOURCE_STASH="$(mktemp -d "$BUILD_DIR/.kernel-source-stash.XXXXXX")"
+declare -a STASHED_SOURCE_PATHS=()
+restore_kernel_source() {
+  local path
+  for path in "${STASHED_SOURCE_PATHS[@]}"; do
+    [[ -e "$SOURCE_STASH/$path" ]] || continue
+    rm -rf "$KERNEL_SRC/$path"
+    mkdir -p "$KERNEL_SRC/$(dirname "$path")"
+    mv "$SOURCE_STASH/$path" "$KERNEL_SRC/$path"
+  done
+  rm -rf "$SOURCE_STASH"
+}
+stash_source_path() {
+  local path="$1"
+  [[ -e "$KERNEL_SRC/$path" ]] || return 0
+  mkdir -p "$SOURCE_STASH/$(dirname "$path")"
+  mv "$KERNEL_SRC/$path" "$SOURCE_STASH/$path"
+  STASHED_SOURCE_PATHS+=("$path")
+}
+trap restore_kernel_source EXIT
+stash_source_path .config
+stash_source_path include/config
+stash_source_path arch/x86/include/generated
+
 while IFS= read -r line; do
  case "$line" in
   CONFIG_*=y) symbol="${line#CONFIG_}"; symbol="${symbol%%=*}"; config_tool --enable "$symbol";;

@@ -263,6 +263,15 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("config_tool --enable", script)
         self.assertNotIn('[[ -x "$KERNEL_SRC/scripts/config" ]]', script)
 
+    def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
+        script = self.read("scripts/build-kernel.sh")
+        self.assertIn('SOURCE_STASH="$(mktemp -d "$BUILD_DIR/.kernel-source-stash.XXXXXX")"', script)
+        self.assertIn("trap restore_kernel_source EXIT", script)
+        for path in (".config", "include/config", "arch/x86/include/generated"):
+            self.assertIn(f"stash_source_path {path}", script)
+        self.assertIn('mv "$SOURCE_STASH/$path" "$KERNEL_SRC/$path"', script)
+        self.assertNotIn("mrproper", script.splitlines()[-1])
+
     def test_iso_builder_reuses_prebuilt_runtime_stage(self):
         script = self.read("kit/brainos-qt/packaging/build-iso.sh")
         self.assertIn("BRAINOS_PREBUILT_STAGE", script)
