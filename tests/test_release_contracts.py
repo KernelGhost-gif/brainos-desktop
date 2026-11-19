@@ -80,6 +80,11 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("screenshot.isNull()", main)
         self.assertIn("screenshot.save(screenshotPath)", main)
 
+    def test_desktop_surface_imports_controls_for_scrollbar(self):
+        source = self.read("kit/brainos-qt/qml/desktop/DesktopSurface.qml")
+        self.assertIn("import QtQuick.Controls", source)
+        self.assertIn("ScrollBar.vertical: ScrollBar", source)
+
     def test_qml_runtime_bundle_preserves_the_actual_nested_module_layout(self):
         bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh")
         self.assertIn('cp -a "$qt_qml/." "$destination/qml/"', bundler)
