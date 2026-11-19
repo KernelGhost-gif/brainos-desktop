@@ -58,6 +58,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
             "qml6-module-qtqml-workerscript",
             "qml6-module-qtquick",
             "qml6-module-qtquick-controls",
+            "qml6-module-qtquick-templates",
             "qml6-module-qtquick-layouts",
             "qml6-module-qtquick-window",
             "qml6-module-qtwebengine",
@@ -88,7 +89,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
     def test_qml_runtime_bundle_preserves_the_actual_nested_module_layout(self):
         bundler = self.read("kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh")
         self.assertIn('cp -a "$qt_qml/." "$destination/qml/"', bundler)
-        for module in ("QtQuick/Controls", "QtQuick/Layouts", "QtQuick/Window",
+        for module in ("QtQuick/Controls", "QtQuick/Templates", "QtQuick/Layouts", "QtQuick/Window",
                        "QtQml/WorkerScript", "QtWayland/Compositor/XdgShell", "QtWebEngine"):
             self.assertIn(module, bundler)
 
