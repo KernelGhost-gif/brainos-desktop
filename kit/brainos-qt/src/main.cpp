@@ -67,6 +67,10 @@ int main(int argc, char **argv)
     engine.rootContext()->setContextProperty(QStringLiteral("waylandSocketName"), parser.value(socketOption));
     engine.rootContext()->setContextProperty(QStringLiteral("qaOpenWindows"), parser.isSet(qaWindowsOption));
 
+    // QML files are compiled into the executable under /qt/qml. Add that
+    // embedded module root explicitly so imports such as "import BrainOS"
+    // can resolve the embedded qmldir instead of searching only disk paths.
+    engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
     // loadFromModule() was added after Qt 6.4; this resource URL works on Ubuntu 24.04.
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/BrainOS/qml/Compositor.qml")));
     if (engine.rootObjects().isEmpty())
