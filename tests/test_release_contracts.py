@@ -75,6 +75,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
         cmake = self.read("kit/brainos-qt/CMakeLists.txt")
         main = self.read("kit/brainos-qt/src/main.cpp")
         self.assertIn('RESOURCE_PREFIX "/qt/qml"', cmake)
+        self.assertIn('engine.addImportPath(QStringLiteral("qrc:/qt/qml"));', main)
         self.assertIn('qrc:/qt/qml/BrainOS/qml/Compositor.qml', main)
         self.assertIn("screenshot.isNull()", main)
         self.assertIn("screenshot.save(screenshotPath)", main)
