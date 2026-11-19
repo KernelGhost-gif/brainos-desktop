@@ -2,6 +2,8 @@ name: BrainOS Full Build and Release
 
 on:
   create:
+  push:
+    branches: ["feat/**"]
 
 permissions:
   contents: write
@@ -12,7 +14,12 @@ concurrency:
 
 jobs:
   build-and-publish:
-    if: github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/')
+    if: >-
+      (github.event_name == 'create' &&
+       github.event.ref_type == 'branch' &&
+       startsWith(github.event.ref, 'release/')) ||
+      (github.event_name == 'push' &&
+       startsWith(github.ref, 'refs/heads/feat/'))
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
@@ -37,11 +44,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME#release/}"
-          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || {
-            echo "Expected release branch release/vMAJOR.MINOR.PATCH; got $GITHUB_REF_NAME" >&2
-            exit 2
-          }
+          if [[ "$GITHUB_EVENT_NAME" == "create" ]]; then
+            tag="${GITHUB_REF_NAME#release/}"
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || {
+              echo "Expected release branch release/vMAJOR.MINOR.PATCH; got $GITHUB_REF_NAME" >&2
+              exit 2
+            }
+            echo "BUILD_MODE=release" >> "$GITHUB_ENV"
+          else
+            # Feature branches run the complete boot-and-screenshot QA path,
+            # but this synthetic version is never published as a GitHub Release.
+            tag="v0.0.0-qa.${GITHUB_RUN_NUMBER}"
+            echo "BUILD_MODE=qa" >> "$GITHUB_ENV"
+          fi
           echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
           echo "BRAINOS_VERSION=${tag#v}" >> "$GITHUB_ENV"
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
@@ -169,6 +184,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: Publish GitHub release
+        if: github.event_name == 'create'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
