@@ -13,6 +13,11 @@ sudo apt-get install --no-install-recommends \
   build-essential cmake ninja-build pkg-config \
   qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-wayland \
   qml6-module-qtwayland-compositor qt6-webengine-dev \
+  qml6-module-qtcore qml6-module-qtqml qml6-module-qtqml-models \
+  qml6-module-qtqml-workerscript qml6-module-qtquick \
+  qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+  qml6-module-qtquick-window qml6-module-qtwebengine \
+  qml6-module-qtwebengine-controlsdelegates \
   qt6-tools-dev qt6-tools-dev-tools qt6-positioning-dev qt6-webchannel-dev \
   binutils curl util-linux \
   libegl-dev libgl-dev libdrm-dev libgbm-dev libinput-dev \
@@ -25,10 +30,13 @@ The `qt6-webengine-dev` package supplies the Qt 6 WebEngine CMake package and
 `qt6-wayland-dev` provides the Qt Wayland Compositor development module.
 Ubuntu also splits the Qt Wayland plugin binaries into the separate
 `qt6-wayland` package; install it so the imported CMake plugin targets have
-their referenced shared objects. The `qml6-module-qtwayland-compositor`
-package supplies the runtime QML compositor module. `qt6-declarative-dev`
-provides QML, Quick, and Quick Controls 2. Package names can vary on
-non-Debian systems; install equivalent Qt 6 modules and system development headers.
+their referenced shared objects. The `qml6-module-qtwayland-compositor` package supplies the runtime QML
+compositor module. Qt 6 runtime QML modules are separate Debian/Ubuntu
+packages; install the Core, QML, Models, WorkerScript, Quick, Quick Controls,
+Layouts, Window, and WebEngine modules listed above. The bundler validates
+these imports and fails if any required module is absent. Package names can
+vary on non-Debian systems; install the equivalent Qt 6 modules and system
+development headers.
 
 ## Configure and compile from source
 

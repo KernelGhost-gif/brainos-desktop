@@ -50,6 +50,27 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('find "$destination/qml" -type f', bundler)
         self.assertIn('scan_dependencies "$plugin"', bundler)
 
+    def test_build_hosts_install_all_required_qml_runtime_modules(self):
+        required = (
+            "qml6-module-qtcore",
+            "qml6-module-qtqml",
+            "qml6-module-qtqml-models",
+            "qml6-module-qtqml-workerscript",
+            "qml6-module-qtquick",
+            "qml6-module-qtquick-controls",
+            "qml6-module-qtquick-layouts",
+            "qml6-module-qtquick-window",
+            "qml6-module-qtwebengine",
+            "qml6-module-qtwebengine-controlsdelegates",
+        )
+        for path in (".github/workflows/ci.yml",
+                     ".github/workflows/release.yml",
+                     "kit/brainos-qt/packaging/README.md"):
+            source = self.read(path)
+            for package in required:
+                with self.subTest(path=path, package=package):
+                    self.assertIn(package, source)
+
     def test_qml_resource_prefix_matches_the_runtime_engine_url(self):
         cmake = self.read("kit/brainos-qt/CMakeLists.txt")
         main = self.read("kit/brainos-qt/src/main.cpp")
