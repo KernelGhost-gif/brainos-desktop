@@ -312,8 +312,11 @@ class BrainOSReleaseContracts(unittest.TestCase):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn('SOURCE_STASH="$(mktemp -d "$BUILD_DIR/.kernel-source-stash.XXXXXX")"', script)
         self.assertIn("trap restore_kernel_source EXIT", script)
-        for path in (".config", "include/config", "arch/x86/include/generated"):
+        for path in (".config", "include/config", "include/generated",
+                     "arch/x86/include/generated"):
             self.assertIn(f"stash_source_path {path}", script)
+        self.assertIn("stale include/generated/autoconf.h", script)
+        self.assertIn("BUILD_DIR's freshly", script)
         self.assertIn('mv "$SOURCE_STASH/$path" "$KERNEL_SRC/$path"', script)
         self.assertNotIn("mrproper", script.splitlines()[-1])
 
