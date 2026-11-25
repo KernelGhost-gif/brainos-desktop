@@ -263,12 +263,14 @@ class BrainOSReleaseContracts(unittest.TestCase):
             self.assertIn(marker, workflow)
         self.assertNotIn("\\${", workflow)
 
-    def test_kernel_config_helper_runs_when_tracked_non_executable(self):
+    def test_kernel_build_uses_repo_owned_config_updater(self):
         script = self.read("scripts/build-kernel.sh")
-        self.assertIn('[[ -f "$KERNEL_SRC/scripts/config" ]]', script)
-        self.assertIn('config_tool() { bash "$KERNEL_SRC/scripts/config" --file "$BUILD_DIR/.config" "$@"; }', script)
+        updater = self.read("scripts/update_kernel_config.py")
+        self.assertIn('CONFIG_UPDATER="$ROOT/scripts/update_kernel_config.py"', script)
+        self.assertIn('config_tool() { python3 "$CONFIG_UPDATER" --file "$BUILD_DIR/.config" "$@"; }', script)
         self.assertIn("config_tool --enable", script)
-        self.assertNotIn('[[ -x "$KERNEL_SRC/scripts/config" ]]', script)
+        self.assertIn("os.replace(", updater)
+        self.assertNotIn('KERNEL_SRC/scripts/config', script)
 
     def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
         script = self.read("scripts/build-kernel.sh")

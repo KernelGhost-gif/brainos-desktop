@@ -91,7 +91,7 @@ jobs:
           bash -n kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh
           bash -n kit/brainos-qt/packaging/scripts/bundle-szh-terminal.sh
           bash -n scripts/*.sh
-          python3 -m py_compile kit/integration/*.py tests/*.py
+          python3 -m py_compile kit/integration/*.py scripts/*.py tests/*.py
           python3 -m unittest discover -s tests -v
           ./scripts/test-initramfs-reproducible.sh
       - name: Build desktop, Qt/WebEngine runtime and SZH payload
