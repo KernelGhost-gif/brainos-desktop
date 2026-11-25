@@ -30,11 +30,23 @@ find "$ROOTFS/lib" "$ROOTFS/usr/lib" \( -type f -o -type l \) -name "libicuuc.so
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name icudtl.dat -print -quit 2>/dev/null | grep -q . || fail "ICU data file missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name 'qtwebengine_resources*.pak' -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine .pak resources missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type d -name qtwebengine_locales -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine locales missing"
-if ! find -L "$ROOTFS" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so \) -print -quit 2>/dev/null | grep -q .; then
-  echo "[runtime-audit] Mesa DRI candidates and symlink targets:" >&2
-  find "$ROOTFS" \( -type f -o -type l \) \( -name '*dri.so' -o -name 'libgallium*.so*' \) -print -exec ls -ld {} \; 2>/dev/null | head -80 >&2 || true
-  fail "Mesa software DRI driver missing (including mesa-libgallium targets)"
-fi
+# Ubuntu Noble's libgl1-mesa-dri package exposes swrast/kms_swrast
+# names as symlinks to libdril_dri.so; the actual Gallium software backend
+# lives in a separate versioned libgallium shared object. Check both sides
+# explicitly instead of using find -L, which follows absolute symlinks against
+# the host filesystem rather than the staged rootfs.
+MESA_DRI_DIR="$ROOTFS/usr/lib/x86_64-linux-gnu/dri"
+MESA_DRI_STUB="$MESA_DRI_DIR/libdril_dri.so"
+MESA_GALLIUM="$(find "$ROOTFS/usr/lib/x86_64-linux-gnu" -maxdepth 1 -type f -name 'libgallium*.so*' -print -quit 2>/dev/null || true)"
+for driver in swrast_dri.so kms_swrast_dri.so; do
+  driver_path="$MESA_DRI_DIR/$driver"
+  [[ -L "$driver_path" || -e "$driver_path" ]] || fail "Mesa DRI entry point missing: $driver_path"
+done
+[[ -s "$MESA_DRI_STUB" ]] || fail "Mesa DRI dispatcher missing: $MESA_DRI_STUB"
+[[ -n "$MESA_GALLIUM" && -s "$MESA_GALLIUM" ]] || fail "Mesa Gallium software backend missing from target rootfs"
+check_elf "$MESA_DRI_STUB"
+check_elf "$MESA_GALLIUM"
+echo "[runtime-audit] PASS: Mesa DRI dispatcher and Gallium backend are present."
 exists "$ROOTFS/etc/fonts/fonts.conf" || fail "fontconfig configuration missing"
 exists "$ROOTFS/etc/ssl/certs/ca-certificates.crt" || fail "CA bundle missing"
 exists "$ROOTFS/usr/bin/dbus-run-session" || exists "$ROOTFS/bin/dbus-run-session" || fail "dbus-run-session missing"

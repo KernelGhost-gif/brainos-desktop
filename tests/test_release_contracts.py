@@ -255,9 +255,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("mesa-libgallium", iso_packages)
         for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
             verifier = self.read(path)
-            self.assertIn('find -L "$ROOTFS" -type f', verifier)
-            self.assertIn("Mesa DRI candidates and symlink targets", verifier)
+            self.assertIn('MESA_DRI_STUB="$MESA_DRI_DIR/libdril_dri.so"', verifier)
+            self.assertIn('MESA_GALLIUM="$(find "$ROOTFS/usr/lib/x86_64-linux-gnu"', verifier)
+            self.assertIn('[[ -L "$driver_path" || -e "$driver_path" ]]', verifier)
+            self.assertIn('check_elf "$MESA_GALLIUM"', verifier)
             self.assertIn("kms_swrast_dri.so", verifier)
+            self.assertNotIn('find -L "$ROOTFS" -type f', verifier)
 
     def test_glibc_interpreter_uses_ubuntu_noble_libc_layout(self):
         merger = self.read("kit/integration/merge-into-toybox.sh")
