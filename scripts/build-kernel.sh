@@ -20,8 +20,8 @@ mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 # The pinned SZH kernel snapshot stores shell helpers with mode 100644.
 # Kbuild executes several of them directly (for example cc-version.sh and
 # setlocalversion), so restore their executable bits before invoking make.
-find "$KERNEL_SRC" -type f \\
-  \\( -name '*.sh' -o -name 'setlocalversion' \\) \\
+find "$KERNEL_SRC" -type f \
+  \( -name '*.sh' -o -name 'setlocalversion' \) \
   -exec chmod u+x {} +
 cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
 
