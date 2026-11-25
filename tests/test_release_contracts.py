@@ -124,6 +124,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
             "kit/brainos-qt/packaging/build-release.sh",
             "kit/brainos-qt/packaging/scripts/bundle-qt-runtime.sh",
             "kit/brainos-qt/packaging/scripts/bundle-szh-terminal.sh",
+            "kit/integration/verify-runtime.sh",
         ):
             with self.subTest(script=relative):
                 script = ROOT / relative
