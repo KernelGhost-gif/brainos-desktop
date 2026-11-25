@@ -99,6 +99,8 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('dpkg-deb -x "${PRESENT[libgl1-mesa-dri]}" "$MESA_DRI_STAGE"', merger)
         self.assertIn('MESA_DRI_PAYLOAD="$MESA_DRI_STAGE/usr/lib/x86_64-linux-gnu/dri"', merger)
         self.assertIn('"$MESA_DRI_PAYLOAD/."', merger)
+        self.assertIn('MESA_GALLIUM_FILES=( "$TMP/stage/usr/lib/x86_64-linux-gnu"/libgallium*.so* )', merger)
+        self.assertIn('cp -a "$gallium" "$ROOTFS/usr/lib/x86_64-linux-gnu/"', merger)
         self.assertIn("libdril_dri.so", merger)
 
     def test_certificate_bundle_is_generated_after_deb_extraction(self):

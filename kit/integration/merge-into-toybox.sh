@@ -73,10 +73,27 @@ MESA_DRI_PAYLOAD="$MESA_DRI_STAGE/usr/lib/x86_64-linux-gnu/dri"
   dpkg-deb -c "${PRESENT[libgl1-mesa-dri]}" | grep -E 'dri/|libdril' >&2 || true
   exit 5
 }
+# DRI's libdril_dri.so entry can resolve through an absolute soname path.
+# Install the versioned Gallium backend explicitly so the target's symlink
+# resolves inside the target filesystem rather than accidentally using the
+# build host's /usr/lib tree.
+MESA_GALLIUM_FILES=( "$TMP/stage/usr/lib/x86_64-linux-gnu"/libgallium*.so* )
+(( ${#MESA_GALLIUM_FILES[@]} > 0 )) || {
+  echo "mesa-libgallium package did not supply a versioned libgallium shared object." >&2
+  dpkg-deb -c "${PRESENT[mesa-libgallium]}" | grep -E 'libgallium' >&2 || true
+  exit 5
+}
+install -d "$ROOTFS/usr/lib/x86_64-linux-gnu"
+for gallium in "${MESA_GALLIUM_FILES[@]}"; do
+  cp -a "$gallium" "$ROOTFS/usr/lib/x86_64-linux-gnu/"
+done
 install -d "$ROOTFS/usr/lib/x86_64-linux-gnu/dri"
 cp -a "$MESA_DRI_PAYLOAD/." "$ROOTFS/usr/lib/x86_64-linux-gnu/dri/"
 [[ -e "$ROOTFS/usr/lib/x86_64-linux-gnu/dri/libdril_dri.so" ]] || {
   echo "Mesa Gallium backend did not survive installation into the target rootfs." >&2
+  echo "DRI link: $(readlink "$ROOTFS/usr/lib/x86_64-linux-gnu/dri/libdril_dri.so" 2>/dev/null || true)" >&2
+  echo "Gallium targets in rootfs:" >&2
+  find "$ROOTFS/usr/lib/x86_64-linux-gnu" -maxdepth 1 -name 'libgallium*.so*' -ls >&2 || true
   exit 5
 }
 # dpkg-deb -x does not execute ca-certificates' postinst hook. Generate the
