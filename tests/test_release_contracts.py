@@ -276,7 +276,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
 
     def test_kernel_build_restores_executable_bits_for_flattened_shell_helpers(self):
         script = self.read("scripts/build-kernel.sh")
-        self.assertIn("Kbuild executes several of them directly", script)
+        self.assertIn("Kbuild executes shell helpers and extensionless scripts/mkcompile_h directly", script)
         self.assertIn("find \"$KERNEL_SRC\" -type f", script)
         self.assertIn("-name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h'", script)
         self.assertIn("-exec chmod u+x {} +", script)
