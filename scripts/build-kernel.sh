@@ -21,19 +21,21 @@ mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 # Kbuild executes shell helpers and extensionless scripts/mkcompile_h directly,
 # so restore their executable bits before invoking make.
 find "$KERNEL_SRC" \( -type f -o -type l \) \
-  \( -name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h' \) \
+  \( -name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h' -o -name 'remove-stale-files' \) \
   -exec chmod u+x {} +
 # mkcompile_h may be materialized as a symlink by the pinned snapshot's
 # sparse checkout. Normalize the exact Kbuild entry points explicitly too;
 # find -type f alone silently skips symlinks.
-for helper in "$KERNEL_SRC/scripts/mkcompile_h" "$KERNEL_SRC/scripts/setlocalversion"; do
+for helper in "$KERNEL_SRC/scripts/mkcompile_h" "$KERNEL_SRC/scripts/setlocalversion" "$KERNEL_SRC/scripts/remove-stale-files"; do
   if [[ -e "$helper" ]]; then chmod u+x "$helper"; fi
 done
-[[ -x "$KERNEL_SRC/scripts/mkcompile_h" ]] || {
-  echo "Kernel Kbuild helper is not executable after permission normalization: $KERNEL_SRC/scripts/mkcompile_h" >&2
-  ls -l "$KERNEL_SRC/scripts/mkcompile_h" >&2 || true
-  exit 5
-}
+for helper in "$KERNEL_SRC/scripts/mkcompile_h" "$KERNEL_SRC/scripts/remove-stale-files"; do
+  [[ -x "$helper" ]] || {
+    echo "Kernel Kbuild helper is not executable after permission normalization: $helper" >&2
+    ls -l "$helper" >&2 || true
+    exit 5
+  }
+done
 cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
 
 # This SZH snapshot stores a kernel .config and generated Kbuild directories
