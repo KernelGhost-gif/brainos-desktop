@@ -274,6 +274,13 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("os.replace(", updater)
         self.assertNotIn('KERNEL_SRC/scripts/config', script)
 
+    def test_kernel_build_restores_executable_bits_for_flattened_shell_helpers(self):
+        script = self.read("scripts/build-kernel.sh")
+        self.assertIn("Kbuild executes several of them directly", script)
+        self.assertIn("find \"$KERNEL_SRC\" -type f", script)
+        self.assertIn("-name '*.sh' -o -name 'setlocalversion'", script)
+        self.assertIn("-exec chmod u+x {} +", script)
+
     def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn('SOURCE_STASH="$(mktemp -d "$BUILD_DIR/.kernel-source-stash.XXXXXX")"', script)

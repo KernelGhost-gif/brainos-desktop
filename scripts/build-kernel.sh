@@ -16,6 +16,13 @@ command -v python3 >/dev/null || { echo "python3 is required to update the kerne
 # being present in the pinned SZH kernel checkout.
 config_tool() { python3 "$CONFIG_UPDATER" --file "$BUILD_DIR/.config" "$@"; }
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
+
+# The pinned SZH kernel snapshot stores shell helpers with mode 100644.
+# Kbuild executes several of them directly (for example cc-version.sh and
+# setlocalversion), so restore their executable bits before invoking make.
+find "$KERNEL_SRC" -type f \\
+  \\( -name '*.sh' -o -name 'setlocalversion' \\) \\
+  -exec chmod u+x {} +
 cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
 
 # This SZH snapshot stores a kernel .config and generated Kbuild directories
