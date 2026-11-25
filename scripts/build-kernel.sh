@@ -20,9 +20,20 @@ mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 # The pinned SZH kernel snapshot stores helper scripts with mode 100644.
 # Kbuild executes shell helpers and extensionless scripts/mkcompile_h directly,
 # so restore their executable bits before invoking make.
-find "$KERNEL_SRC" -type f \
+find "$KERNEL_SRC" \( -type f -o -type l \) \
   \( -name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h' \) \
   -exec chmod u+x {} +
+# mkcompile_h may be materialized as a symlink by the pinned snapshot's
+# sparse checkout. Normalize the exact Kbuild entry points explicitly too;
+# find -type f alone silently skips symlinks.
+for helper in "$KERNEL_SRC/scripts/mkcompile_h" "$KERNEL_SRC/scripts/setlocalversion"; do
+  if [[ -e "$helper" ]]; then chmod u+x "$helper"; fi
+done
+[[ -x "$KERNEL_SRC/scripts/mkcompile_h" ]] || {
+  echo "Kernel Kbuild helper is not executable after permission normalization: $KERNEL_SRC/scripts/mkcompile_h" >&2
+  ls -l "$KERNEL_SRC/scripts/mkcompile_h" >&2 || true
+  exit 5
+}
 cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
 
 # This SZH snapshot stores a kernel .config and generated Kbuild directories

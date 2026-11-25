@@ -288,20 +288,15 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("os.replace(", updater)
         self.assertNotIn('KERNEL_SRC/scripts/config', script)
 
-    def test_kernel_build_restores_executable_bits_for_flattened_shell_helpers(self):
+    def test_kernel_build_restores_executable_bits_for_flattened_and_symlink_helpers(self):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn("Kbuild executes shell helpers and extensionless scripts/mkcompile_h directly", script)
-        self.assertIn("find \"$KERNEL_SRC\" -type f", script)
+        self.assertIn('find "$KERNEL_SRC" \\( -type f -o -type l \\', script)
         self.assertIn("-name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h'", script)
         self.assertIn("-exec chmod u+x {} +", script)
-        backslash = chr(92)
-        expected = (
-            'find "$KERNEL_SRC" -type f ' + backslash + "\n"
-            + "  " + backslash + "( -name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h' "
-            + backslash + ") " + backslash + "\n"
-            + "  -exec chmod u+x {} +"
-        )
-        self.assertIn(expected, script)
+        self.assertIn('chmod u+x "$helper"', script)
+        self.assertIn('[[ -x "$KERNEL_SRC/scripts/mkcompile_h" ]]', script)
+        self.assertIn('ls -l "$KERNEL_SRC/scripts/mkcompile_h"', script)
 
     def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
         script = self.read("scripts/build-kernel.sh")
