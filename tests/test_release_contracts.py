@@ -282,9 +282,9 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("-exec chmod u+x {} +", script)
         backslash = chr(92)
         expected = (
-            'find "$KERNEL_SRC" -type f ' + backslash + "\\n"
+            'find "$KERNEL_SRC" -type f ' + backslash + "\n"
             + "  " + backslash + "( -name '*.sh' -o -name 'setlocalversion' "
-            + backslash + ") " + backslash + "\\n"
+            + backslash + ") " + backslash + "\n"
             + "  -exec chmod u+x {} +"
         )
         self.assertIn(expected, script)
