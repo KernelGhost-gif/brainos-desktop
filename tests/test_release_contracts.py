@@ -278,12 +278,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn("Kbuild executes several of them directly", script)
         self.assertIn("find \"$KERNEL_SRC\" -type f", script)
-        self.assertIn("-name '*.sh' -o -name 'setlocalversion'", script)
+        self.assertIn("-name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h'", script)
         self.assertIn("-exec chmod u+x {} +", script)
         backslash = chr(92)
         expected = (
             'find "$KERNEL_SRC" -type f ' + backslash + "\n"
-            + "  " + backslash + "( -name '*.sh' -o -name 'setlocalversion' "
+            + "  " + backslash + "( -name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h' "
             + backslash + ") " + backslash + "\n"
             + "  -exec chmod u+x {} +"
         )
