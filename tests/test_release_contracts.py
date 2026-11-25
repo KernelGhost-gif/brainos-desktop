@@ -184,6 +184,8 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("bsdutils", merger)
         downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
         self.assertIn('"bsdutils"', downloader)
+        self.assertIn('"qml6-module-qtquick-templates"', downloader)
+        self.assertIn("qml6-module-qtquick-templates", merger)
         self.assertIn("util-linux", downloader)
         self.assertIn('destination="$stage/opt/brainos/szh"', bundler)
 

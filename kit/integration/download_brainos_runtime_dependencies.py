@@ -23,7 +23,7 @@ PACKAGES = [
     "libqt6webchannel6",
     "libqt6webengine6-data", "libqt6webenginecore6", "libqt6webenginecore6-bin", "libqt6webenginequick6",
     "qml6-module-qtcore", "qml6-module-qtqml", "qml6-module-qtqml-models",
-    "qml6-module-qtqml-workerscript", "qml6-module-qtquick", "qml6-module-qtquick-controls",
+    "qml6-module-qtqml-workerscript", "qml6-module-qtquick", "qml6-module-qtquick-controls", "qml6-module-qtquick-templates",
     "qml6-module-qtquick-layouts", "qml6-module-qtquick-window", "qml6-module-qtwayland-compositor",
     "qml6-module-qtwebengine", "qml6-module-qtwebengine-controlsdelegates",
     "dbus", "dbus-daemon", "dbus-bin", "dbus-session-bus-common",
