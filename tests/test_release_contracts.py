@@ -302,6 +302,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('[[ -x "$helper" ]]', script)
         self.assertIn('ls -l "$helper"', script)
 
+    def test_kernel_build_treats_unsupported_counted_by_attribute_as_nonfatal(self):
+        script = self.read("scripts/build-kernel.sh")
+        self.assertIn("GCC 13/14 does not implement the optional counted_by metadata", script)
+        self.assertIn('KERNEL_KCFLAGS="${KERNEL_KCFLAGS:--Wno-error=attributes}"', script)
+        self.assertIn('KCFLAGS="$KERNEL_KCFLAGS"', script)
+
     def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn('SOURCE_STASH="$(mktemp -d "$BUILD_DIR/.kernel-source-stash.XXXXXX")"', script)

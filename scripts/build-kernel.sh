@@ -77,7 +77,11 @@ make -C "$KERNEL_SRC" O="$BUILD_DIR" ARCH=x86_64 olddefconfig
 required=(CONFIG_NAMESPACES CONFIG_USER_NS CONFIG_PID_NS CONFIG_NET_NS CONFIG_IPC_NS CONFIG_UTS_NS CONFIG_TMPFS CONFIG_POSIX_MQUEUE CONFIG_DEVTMPFS CONFIG_DRM CONFIG_DRM_VIRTIO_GPU CONFIG_DRM_BOCHS CONFIG_DRM_FBDEV_EMULATION CONFIG_INPUT_EVDEV CONFIG_UNIX CONFIG_INET CONFIG_SECCOMP CONFIG_SECCOMP_FILTER CONFIG_SERIAL_8250_CONSOLE)
 for symbol in "${required[@]}"; do grep -qx "$symbol=y" "$BUILD_DIR/.config" || { echo "Kernel config disabled required option $symbol." >&2; exit 3; }; done
 echo "[kernel] CONFIG_USER_NS=y verified after olddefconfig."
-make -C "$KERNEL_SRC" O="$BUILD_DIR" ARCH=x86_64 -j"$JOBS" bzImage
+# GCC 13/14 does not implement the optional counted_by metadata used by
+# newer Linux headers. Keep -Wattributes visible, but do not fail the kernel
+# build solely because this compiler ignores that non-ABI annotation.
+KERNEL_KCFLAGS="${KERNEL_KCFLAGS:--Wno-error=attributes}"
+make -C "$KERNEL_SRC" O="$BUILD_DIR" ARCH=x86_64 KCFLAGS="$KERNEL_KCFLAGS" -j"$JOBS" bzImage
 IMAGE="$BUILD_DIR/arch/x86/boot/bzImage"
 [[ -s "$IMAGE" ]] || { echo "Kernel build did not produce bzImage." >&2; exit 4; }
 install -m 0644 "$IMAGE" "$OUTPUT_DIR/bzImage"
