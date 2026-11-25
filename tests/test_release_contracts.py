@@ -295,11 +295,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn("Kbuild executes shell helpers and extensionless scripts/mkcompile_h directly", script)
         self.assertIn('find "$KERNEL_SRC" \\( -type f -o -type l \\', script)
-        self.assertIn("-name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h'", script)
+        self.assertIn("-name '*.sh' -o -name 'setlocalversion' -o -name 'mkcompile_h' -o -name 'remove-stale-files'", script)
         self.assertIn("-exec chmod u+x {} +", script)
         self.assertIn('chmod u+x "$helper"', script)
-        self.assertIn('[[ -x "$KERNEL_SRC/scripts/mkcompile_h" ]]', script)
-        self.assertIn('ls -l "$KERNEL_SRC/scripts/mkcompile_h"', script)
+        self.assertIn('for helper in "$KERNEL_SRC/scripts/mkcompile_h" "$KERNEL_SRC/scripts/remove-stale-files"; do', script)
+        self.assertIn('[[ -x "$helper" ]]', script)
+        self.assertIn('ls -l "$helper"', script)
 
     def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
         script = self.read("scripts/build-kernel.sh")
