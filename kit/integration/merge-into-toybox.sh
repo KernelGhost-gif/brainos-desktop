@@ -61,6 +61,24 @@ loader="$TMP/stage/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
 [[ -e "$loader" ]] || { echo "glibc x86_64 loader missing from runtime package closure; searched /usr/lib, /usr/lib64, /lib64 and /lib." >&2; exit 5; }
 install -d "$ROOTFS"
 cp -a "$TMP/stage/." "$ROOTFS/"
+# Ubuntu Noble's DRI entry points are symlinks to libdril_dri.so. Install the
+# libgl1-mesa-dri payload explicitly after the general dependency overlay so a
+# pre-existing target /usr/lib layout cannot hide or drop the Gallium backend.
+MESA_DRI_STAGE="$TMP/mesa-dri-payload"
+mkdir -p "$MESA_DRI_STAGE"
+dpkg-deb -x "${PRESENT[libgl1-mesa-dri]}" "$MESA_DRI_STAGE"
+MESA_DRI_PAYLOAD="$MESA_DRI_STAGE/usr/lib/x86_64-linux-gnu/dri"
+[[ -e "$MESA_DRI_PAYLOAD/libdril_dri.so" ]] || {
+  echo "libgl1-mesa-dri package is missing its libdril_dri.so backend." >&2
+  dpkg-deb -c "${PRESENT[libgl1-mesa-dri]}" | grep -E 'dri/|libdril' >&2 || true
+  exit 5
+}
+install -d "$ROOTFS/usr/lib/x86_64-linux-gnu/dri"
+cp -a "$MESA_DRI_PAYLOAD/." "$ROOTFS/usr/lib/x86_64-linux-gnu/dri/"
+[[ -e "$ROOTFS/usr/lib/x86_64-linux-gnu/dri/libdril_dri.so" ]] || {
+  echo "Mesa Gallium backend did not survive installation into the target rootfs." >&2
+  exit 5
+}
 # dpkg-deb -x does not execute ca-certificates' postinst hook. Generate the
 # consolidated trust bundle from the package's selected Mozilla/local PEMs.
 python3 "$KIT_DIR/integration/build_ca_bundle.py" "$ROOTFS"

@@ -93,6 +93,14 @@ class BrainOSReleaseContracts(unittest.TestCase):
                        "QtQml/WorkerScript", "QtWayland/Compositor/XdgShell", "QtWebEngine"):
             self.assertIn(module, bundler)
 
+    def test_mesa_gallium_backend_is_explicitly_installed_after_runtime_overlay(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        self.assertIn('MESA_DRI_STAGE="$TMP/mesa-dri-payload"', merger)
+        self.assertIn('dpkg-deb -x "${PRESENT[libgl1-mesa-dri]}" "$MESA_DRI_STAGE"', merger)
+        self.assertIn('MESA_DRI_PAYLOAD="$MESA_DRI_STAGE/usr/lib/x86_64-linux-gnu/dri"', merger)
+        self.assertIn('"$MESA_DRI_PAYLOAD/."', merger)
+        self.assertIn("libdril_dri.so", merger)
+
     def test_certificate_bundle_is_generated_after_deb_extraction(self):
         merger = self.read("kit/integration/merge-into-toybox.sh")
         downloader = self.read("kit/integration/download_brainos_runtime_dependencies.py")
