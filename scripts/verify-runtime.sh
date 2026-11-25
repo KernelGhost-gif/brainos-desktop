@@ -30,7 +30,11 @@ find "$ROOTFS/lib" "$ROOTFS/usr/lib" \( -type f -o -type l \) -name "libicuuc.so
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name icudtl.dat -print -quit 2>/dev/null | grep -q . || fail "ICU data file missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type f -name 'qtwebengine_resources*.pak' -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine .pak resources missing"
 find "$ROOTFS/usr/share" "$ROOTFS/usr/lib" -type d -name qtwebengine_locales -print -quit 2>/dev/null | grep -q . || fail "QtWebEngine locales missing"
-find -L "$ROOTFS/usr/lib" "$ROOTFS/lib" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so \) -print -quit 2>/dev/null | grep -q . || fail "Mesa software DRI driver missing (including mesa-libgallium targets)"
+if ! find -L "$ROOTFS" -type f \( -name swrast_dri.so -o -name kms_swrast_dri.so \) -print -quit 2>/dev/null | grep -q .; then
+  echo "[runtime-audit] Mesa DRI candidates and symlink targets:" >&2
+  find "$ROOTFS" \( -type f -o -type l \) \( -name '*dri.so' -o -name 'libgallium*.so*' \) -print -exec ls -ld {} \; 2>/dev/null | head -80 >&2 || true
+  fail "Mesa software DRI driver missing (including mesa-libgallium targets)"
+fi
 exists "$ROOTFS/etc/fonts/fonts.conf" || fail "fontconfig configuration missing"
 exists "$ROOTFS/etc/ssl/certs/ca-certificates.crt" || fail "CA bundle missing"
 exists "$ROOTFS/usr/bin/dbus-run-session" || exists "$ROOTFS/bin/dbus-run-session" || fail "dbus-run-session missing"

@@ -243,7 +243,10 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("mesa-libgallium", merger)
         self.assertIn("mesa-libgallium", iso_packages)
         for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
-            self.assertIn('find -L "$ROOTFS/usr/lib" "$ROOTFS/lib"', self.read(path))
+            verifier = self.read(path)
+            self.assertIn('find -L "$ROOTFS" -type f', verifier)
+            self.assertIn("Mesa DRI candidates and symlink targets", verifier)
+            self.assertIn("kms_swrast_dri.so", verifier)
 
     def test_glibc_interpreter_uses_ubuntu_noble_libc_layout(self):
         merger = self.read("kit/integration/merge-into-toybox.sh")
