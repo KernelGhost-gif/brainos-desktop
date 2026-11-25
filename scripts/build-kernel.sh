@@ -64,6 +64,10 @@ stash_source_path() {
 trap restore_kernel_source EXIT
 stash_source_path .config
 stash_source_path include/config
+# The pinned SZH snapshot tracks a stale include/generated/autoconf.h.
+# Keep it out of the source include path so Kbuild uses BUILD_DIR's freshly
+# generated header after olddefconfig (not the snapshot's old CONFIG_USER_NS=n).
+stash_source_path include/generated
 stash_source_path arch/x86/include/generated
 
 while IFS= read -r line; do
