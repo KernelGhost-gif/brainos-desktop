@@ -280,6 +280,12 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("find \"$KERNEL_SRC\" -type f", script)
         self.assertIn("-name '*.sh' -o -name 'setlocalversion'", script)
         self.assertIn("-exec chmod u+x {} +", script)
+        self.assertIn(
+            r'''find "$KERNEL_SRC" -type f \\
+  \\( -name '*.sh' -o -name 'setlocalversion' \\) \\
+  -exec chmod u+x {} +'''.replace("\\\\", "\\"),
+            script,
+        )
 
     def test_kernel_out_of_tree_build_stashes_and_restores_source_generated_files(self):
         script = self.read("scripts/build-kernel.sh")
