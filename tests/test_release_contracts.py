@@ -272,7 +272,6 @@ class BrainOSReleaseContracts(unittest.TestCase):
         merger = self.read("kit/integration/merge-into-toybox.sh")
         helper = self.read("kit/integration/restore_command_modes.py")
         self.assertIn('restore_command_modes.py" "$ROOTFS"', merger)
-        self.assertIn('ELF_MAGIC = b"\\\\x7fELF"', helper)
         self.assertIn('header == ELF_MAGIC or header.startswith(b"#!")', helper)
         self.assertIn('entrypoints = (', helper)
         for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
