@@ -273,7 +273,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
         helper = self.read("kit/integration/restore_command_modes.py")
         self.assertIn('restore_command_modes.py" "$ROOTFS"', merger)
         self.assertIn('ELF_MAGIC = b"\\\\x7fELF"', helper)
-        self.assertIn('path.read_bytes()[:2] == b"#! "', helper) if False else None
+        self.assertIn('header == ELF_MAGIC or header.startswith(b"#!")', helper)
         self.assertIn('entrypoints = (', helper)
         for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
             verifier = self.read(path)
