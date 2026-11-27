@@ -14,6 +14,17 @@ for f in "$ROOTFS/bin/toybox" "$ROOTFS/bin/sh" "$ROOTFS/bin/su" "$INITTAB" "$RCS
   [[ -e "$f" ]] || { echo "Required input missing: $f" >&2; exit 2; }
 done
 
+# The pinned SZH tree includes a root-level Toybox init binary as mode 0644.
+# Linux initramfs boot tries /init before /sbin/init, so make the duplicate
+# executable only after verifying that it is exactly the known /sbin/init.
+if [[ -f "$ROOTFS/init" ]]; then
+  [[ -f "$ROOTFS/sbin/init" ]] && cmp -s "$ROOTFS/init" "$ROOTFS/sbin/init" || {
+    echo "Rootfs /init is not the same Toybox init binary as /sbin/init; refusing to chmod an unknown entrypoint." >&2
+    exit 3
+  }
+  chmod 0755 "$ROOTFS/init"
+fi
+
 # This SZH rootfs keeps the id applet inside Toybox instead of shipping a
 # separate /bin/id ELF. Add the conventional applet link for init scripts.
 if [[ ! -e "$ROOTFS/bin/id" && ! -L "$ROOTFS/bin/id" ]]; then

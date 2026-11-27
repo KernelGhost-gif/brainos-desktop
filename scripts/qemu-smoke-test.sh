@@ -20,7 +20,7 @@ cleanup_active_qemu() { if [[ -n "$ACTIVE_QEMU_PID" ]] && kill -0 "$ACTIVE_QEMU_
 trap cleanup_active_qemu EXIT INT TERM
 start_qemu() {
   local mode="$1" display="$2" log="$3" screenshot="${4:-}"
-  local args=(-machine q35,accel=tcg -cpu max -m 4096 -smp 4 -kernel "$KERNEL" -initrd "$INITRAMFS" -append "console=ttyS0,115200n8 loglevel=5 panic=-1 brainos.mode=$mode" -serial "file:$log" -monitor none -no-reboot -no-shutdown)
+  local args=(-machine q35,accel=tcg -cpu max -m 4096 -smp 4 -kernel "$KERNEL" -initrd "$INITRAMFS" -append "console=ttyS0,115200n8 earlycon=uart,io,0x3f8,115200 loglevel=7 ignore_loglevel panic=-1 rdinit=/sbin/init brainos.mode=$mode" -serial "file:$log" -monitor none -no-reboot -no-shutdown)
   if [[ "$display" == vnc ]]; then args+=(-device virtio-vga -device virtio-keyboard-pci -device virtio-mouse-pci -display "vnc=$VNC_DISPLAY"); else args+=(-display none); fi
   cleanup_active_qemu; rm -f "$log"; "$QEMU_BIN" "${args[@]}" & ACTIVE_QEMU_PID=$!
   local elapsed=0 marker=TOYBOX_CLI_READY; [[ "$mode" == desktop ]] && marker=WAYLAND_SOCKET_READY

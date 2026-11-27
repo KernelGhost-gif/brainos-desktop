@@ -112,6 +112,17 @@ class BrainOSReleaseContracts(unittest.TestCase):
         for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
             self.assertIn("ca-certificates.crt", self.read(path))
 
+    def test_toybox_root_init_is_executable_for_initramfs_boot(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        self.assertIn('cmp -s "$ROOTFS/init" "$ROOTFS/sbin/init"', merger)
+        self.assertIn('chmod 0755 "$ROOTFS/init"', merger)
+
+    def test_qemu_boot_uses_explicit_init_and_early_serial_console(self):
+        qemu = self.read("scripts/qemu-smoke-test.sh")
+        self.assertIn("earlycon=uart,io,0x3f8,115200", qemu)
+        self.assertIn("rdinit=/sbin/init", qemu)
+        self.assertIn("ignore_loglevel", qemu)
+
     def test_qemu_screenshot_gate_rejects_blank_or_invalid_images(self):
         qemu = self.read("scripts/qemu-smoke-test.sh")
         self.assertIn("ImageStat.Stat(image).stddev", qemu)
