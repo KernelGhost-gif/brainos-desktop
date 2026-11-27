@@ -43,9 +43,14 @@ cp "$KERNEL_SRC/.config" "$BUILD_DIR/.config"
 # generated/config paths for the duration of the out-of-tree build, then
 # restore them even on failure; never run mrproper against the pinned source.
 SOURCE_STASH="$(mktemp -d "$BUILD_DIR/.kernel-source-stash.XXXXXX")"
+KERNEL_MAKEFILE_BACKUP="$SOURCE_STASH/kernel-Makefile.original"
+cp -p "$KERNEL_SRC/Makefile" "$KERNEL_MAKEFILE_BACKUP"
 declare -a STASHED_SOURCE_PATHS=()
 restore_kernel_source() {
   local path
+  # Restore the pinned source Makefile after this build. The local build
+  # workaround below only changes how Kbuild launches one helper script.
+  cp -p "$KERNEL_MAKEFILE_BACKUP" "$KERNEL_SRC/Makefile"
   for path in "${STASHED_SOURCE_PATHS[@]}"; do
     [[ -e "$SOURCE_STASH/$path" ]] || continue
     rm -rf "$KERNEL_SRC/$path"
@@ -62,6 +67,29 @@ stash_source_path() {
   STASHED_SOURCE_PATHS+=("$path")
 }
 trap restore_kernel_source EXIT
+
+# The pinned SZH kernel tree tracks scripts/mkcompile_h as mode 100644.
+# The exec-bit normalization above is still useful for other Kbuild helpers,
+# but this filechk rule launches the helper directly. Invoke it through the
+# kernel's CONFIG_SHELL instead, so builds do not depend on checkout mode bits.
+python3 - "$KERNEL_SRC/Makefile" <<'PY'
+from pathlib import Path
+import sys
+
+makefile = Path(sys.argv[1])
+text = makefile.read_text(encoding="utf-8")
+direct = "filechk_compile.h = $(srctree)/scripts/mkcompile_h"
+shell = "filechk_compile.h = $(CONFIG_SHELL) $(srctree)/scripts/mkcompile_h"
+if direct in text:
+    text = text.replace(direct, shell, 1)
+elif shell not in text:
+    raise SystemExit("Kernel Makefile has no recognized mkcompile_h rule; refusing an unsafe edit.")
+makefile.write_text(text, encoding="utf-8")
+PY
+grep -Fq 'filechk_compile.h = $(CONFIG_SHELL) $(srctree)/scripts/mkcompile_h' "$KERNEL_SRC/Makefile" || {
+  echo "Could not route mkcompile_h through CONFIG_SHELL." >&2
+  exit 5
+}
 stash_source_path .config
 stash_source_path include/config
 # The pinned SZH snapshot tracks a stale include/generated/autoconf.h.

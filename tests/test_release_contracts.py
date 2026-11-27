@@ -303,6 +303,15 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("os.replace(", updater)
         self.assertNotIn('KERNEL_SRC/scripts/config', script)
 
+    def test_kernel_compile_header_helper_runs_through_config_shell(self):
+        script = self.read("scripts/build-kernel.sh")
+        self.assertIn(
+            'filechk_compile.h = $(CONFIG_SHELL) $(srctree)/scripts/mkcompile_h',
+            script,
+        )
+        self.assertIn('cp -p "$KERNEL_MAKEFILE_BACKUP" "$KERNEL_SRC/Makefile"', script)
+        self.assertIn('trap restore_kernel_source EXIT', script)
+
     def test_kernel_build_restores_executable_bits_for_flattened_and_symlink_helpers(self):
         script = self.read("scripts/build-kernel.sh")
         self.assertIn("Kbuild executes shell helpers and extensionless scripts/mkcompile_h directly", script)
