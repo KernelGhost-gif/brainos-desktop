@@ -7,10 +7,15 @@ fail() { echo "[runtime-audit] ERROR: $*" >&2; exit 1; }
 exists() { [[ -e "$1" || -L "$1" ]]; }
 for tool in "$ROOTFS/bin/toybox" "$ROOTFS/bin/sh" "$ROOTFS/bin/su" "$ROOTFS/bin/id"; do
   exists "$tool" || fail "Toybox command missing: $tool"
+  [[ -x "$tool" ]] || fail "Toybox command is not executable: $tool"
   interpreter="$(readelf -l "$tool" 2>/dev/null | sed -n 's/.*Requesting program interpreter: \([^]]*\)].*/\1/p' | head -n1)"
   [[ "$interpreter" == /lib/ld-musl-x86_64.so.1 ]] || fail "$tool is not using original musl loader (found '${interpreter:-static-or-unknown}')"
 done
-echo "[runtime-audit] PASS: toybox, sh, su and id remain musl-linked."
+for entrypoint in "$ROOTFS/sbin/init" "$ROOTFS/etc/init.d/rcS" "$ROOTFS/sbin/brainos-launch"; do
+  [[ -x "$entrypoint" ]] || fail "init entrypoint is not executable: $entrypoint"
+done
+
+echo "[runtime-audit] PASS: Toybox commands and init entrypoints are executable and musl-linked."
 exists "$DESKTOP_BIN" || fail "BrainOS executable missing: $DESKTOP_BIN"
 interpreter="$(readelf -l "$DESKTOP_BIN" | sed -n 's/.*Requesting program interpreter: \([^]]*\)].*/\1/p' | head -n1)"
 [[ "$interpreter" == /lib64/ld-linux-x86-64.so.2 ]] || fail "unexpected BrainOS interpreter: ${interpreter:-missing}"

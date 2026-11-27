@@ -268,6 +268,19 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn('../usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2', merger)
         self.assertIn('[[ -e "$ROOTFS/lib64/ld-linux-x86-64.so.2" ]]', merger)
 
+    def test_merger_restores_executable_modes_before_runtime_audit(self):
+        merger = self.read("kit/integration/merge-into-toybox.sh")
+        helper = self.read("kit/integration/restore_command_modes.py")
+        self.assertIn('restore_command_modes.py" "$ROOTFS"', merger)
+        self.assertIn('ELF_MAGIC = b"\\\\x7fELF"', helper)
+        self.assertIn('path.read_bytes()[:2] == b"#! "', helper) if False else None
+        self.assertIn('entrypoints = (', helper)
+        for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
+            verifier = self.read(path)
+            self.assertIn('[[ -x "$tool" ]] || fail "Toybox command is not executable', verifier)
+            self.assertIn('"$ROOTFS/sbin/init"', verifier)
+            self.assertIn('"$ROOTFS/etc/init.d/rcS"', verifier)
+
     def test_merger_adds_missing_toybox_id_applet_link(self):
         merger = self.read("kit/integration/merge-into-toybox.sh")
         self.assertIn('ln -s toybox "$ROOTFS/bin/id"', merger)

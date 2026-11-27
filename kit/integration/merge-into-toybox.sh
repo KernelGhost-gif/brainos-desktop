@@ -149,6 +149,10 @@ SZH_BUNDLER="$KIT_DIR/brainos-qt/packaging/scripts/bundle-szh-terminal.sh"
 [[ -x "$SZH_BUNDLER" ]] || { echo "SZH terminal bundler is missing or not executable." >&2; exit 6; }
 SZH_ROOTFS="${SZH_ROOTFS:-}" "$SZH_BUNDLER" "$ROOTFS"
 
+# Restore executable metadata omitted from the pinned SZH Git tree. The base
+# stores ELF multicall applets and its rcS init script as mode 100644; Linux
+# cannot execute /sbin/init or /bin/sh until those bits are restored.
+python3 "$KIT_DIR/integration/restore_command_modes.py" "$ROOTFS"
 "$KIT_DIR/integration/verify-runtime.sh" "$ROOTFS" "$ROOTFS/opt/brainos/bin/brainos-desktop"
 mkdir -p "$PROJECT_ROOT/distro"
 python3 "$KIT_DIR/integration/pack_initramfs.py" "$ROOTFS" "$PROJECT_ROOT/distro/init.brainos.cpio.gz"
