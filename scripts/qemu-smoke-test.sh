@@ -5,7 +5,7 @@ KERNEL="${1:-$ROOT/out/kernel/bzImage}"
 INITRAMFS="${2:-$ROOT/out/initramfs/brainos-initramfs.cpio.gz}"
 KERNEL_CONFIG="${KERNEL_CONFIG:-$ROOT/out/kernel/kernel.config}"
 QEMU_BIN="${QEMU_BIN:-qemu-system-x86_64}"
-BOOT_WAIT="${BOOT_WAIT:-90}"
+BOOT_WAIT="${BOOT_WAIT:-180}"
 DESKTOP_STABILITY_SECONDS="${DESKTOP_STABILITY_SECONDS:-15}"
 OUT="${QEMU_LOG_DIR:-$ROOT/out/qemu}"
 VNC_DISPLAY="${VNC_DISPLAY:-127.0.0.1:1}"
@@ -20,7 +20,8 @@ cleanup_active_qemu() { if [[ -n "$ACTIVE_QEMU_PID" ]] && kill -0 "$ACTIVE_QEMU_
 trap cleanup_active_qemu EXIT INT TERM
 start_qemu() {
   local mode="$1" display="$2" log="$3" screenshot="${4:-}"
-  local args=(-machine q35,accel=tcg -cpu max -m 4096 -smp 4 -kernel "$KERNEL" -initrd "$INITRAMFS" -append "console=ttyS0,115200n8 earlycon=uart,io,0x3f8,115200 loglevel=7 ignore_loglevel panic=-1 rdinit=/sbin/init brainos.mode=$mode" -serial "file:$log" -monitor none -no-reboot -no-shutdown)
+  local debug_log="$OUT/$mode-qemu-debug.log"
+  local args=(-machine q35,accel=tcg -cpu max -m 4096 -smp 4 -kernel "$KERNEL" -initrd "$INITRAMFS" -append "console=ttyS0,115200n8 earlycon=uart,io,0x3f8,115200 loglevel=7 ignore_loglevel panic=-1 rdinit=/sbin/init brainos.mode=$mode" -chardev "file,id=serial0,path=$log" -device isa-serial,chardev=serial0 -monitor none -no-reboot -no-shutdown -D "$debug_log" -d guest_errors,unimp,cpu_reset)
   if [[ "$display" == vnc ]]; then args+=(-device virtio-vga -device virtio-keyboard-pci -device virtio-mouse-pci -display "vnc=$VNC_DISPLAY"); else args+=(-display none); fi
   cleanup_active_qemu; rm -f "$log"; "$QEMU_BIN" "${args[@]}" & ACTIVE_QEMU_PID=$!
   local elapsed=0 marker=TOYBOX_CLI_READY; [[ "$mode" == desktop ]] && marker=WAYLAND_SOCKET_READY

@@ -123,6 +123,13 @@ class BrainOSReleaseContracts(unittest.TestCase):
         self.assertIn("rdinit=/sbin/init", qemu)
         self.assertIn("ignore_loglevel", qemu)
 
+    def test_qemu_uses_explicit_serial_device_and_preserves_debug_logs(self):
+        qemu = self.read("scripts/qemu-smoke-test.sh")
+        self.assertIn('-chardev "file,id=serial0,path=$log"', qemu)
+        self.assertIn('-device isa-serial,chardev=serial0', qemu)
+        self.assertIn('-D "$debug_log"', qemu)
+        self.assertIn('BOOT_WAIT: "180"', self.read(".github/workflows/release.yml"))
+
     def test_qemu_screenshot_gate_rejects_blank_or_invalid_images(self):
         qemu = self.read("scripts/qemu-smoke-test.sh")
         self.assertIn("ImageStat.Stat(image).stddev", qemu)

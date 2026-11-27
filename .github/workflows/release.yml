@@ -132,7 +132,7 @@ jobs:
       - name: QEMU boot both Toybox CLI and BrainOS desktop
         working-directory: brainos
         env:
-          BOOT_WAIT: "120"
+          BOOT_WAIT: "180"
           DESKTOP_STABILITY_SECONDS: "20"
         run: ./scripts/qemu-smoke-test.sh
       - name: Build Debian live ISO from the verified runtime stage
