@@ -273,7 +273,7 @@ class BrainOSReleaseContracts(unittest.TestCase):
         helper = self.read("kit/integration/restore_command_modes.py")
         self.assertIn('restore_command_modes.py" "$ROOTFS"', merger)
         self.assertIn('header == ELF_MAGIC or header.startswith(b"#!")', helper)
-        self.assertIn('entrypoints = (', helper)
+        self.assertIn('ENTRYPOINTS = (', helper)
         for path in ("kit/integration/verify-runtime.sh", "scripts/verify-runtime.sh"):
             verifier = self.read(path)
             self.assertIn('[[ -x "$tool" ]] || fail "Toybox command is not executable', verifier)
